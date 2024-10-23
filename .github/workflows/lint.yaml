@@ -1,0 +1,17 @@
+name: CI
+
+on:
+    push:
+        branches: [main, master]
+    pull_request:
+        branches: [main, master]
+
+jobs:
+    ruff-lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Run Ruff
+              uses: astral-sh/ruff-action@v1
+              with:
+                  args: check --output-format=github --target-version=py310
