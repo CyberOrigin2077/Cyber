@@ -11,13 +11,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - name: Set up Conda
-              uses: conda-incubator/setup-miniconda@v3
-              with:
-                  auto-update-conda: true
-                  python-version: "3.10"
-                  activate-environment: cyber
             - name: Run Ruff
               uses: astral-sh/ruff-action@v1
               with:
-                  args: check --output-format=github
+                  args: check --output-format=github --target-version=py310
