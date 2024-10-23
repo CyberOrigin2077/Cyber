@@ -4,7 +4,7 @@
 
 The development of world models in robotics has long been a cornerstone of advanced research, with most approaches relying heavily on vast, platform-specific datasets. These datasets, while valuable, often limit scalability and generalization to different robotic platforms, restricting their broader applicability.
 
-In contrast, **CYBER** approaches world modeling from a "first principles" perspective, drawing inspiration from how humans naturally acquire skills through experience and interaction with their environment. **CYBER** is the first general Robotic Operational System designed to adapt to both tele-operated manipulation and human operation data, enabling robots to learn and predict across a wide range of tasks and environments. It build with a <u>Physical World Model</u>, a cross-embodied <u>Visual-Language Action Model</u> (VLA), a <u>Perception Model</u>, a <u>Memory Model</u>, and a <u>Control Model</u> to help robots learn, predict, and memroy across various tasks and embodiments.
+In contrast, **CYBER** approaches world modeling from a "first principles" perspective, drawing inspiration from how humans naturally acquire skills through experience and interaction with their environment. **CYBER** is the first general Robotic Operational System designed to adapt to both teleoperated manipulation and human operation data, enabling robots to learn and predict across a wide range of tasks and environments. It builds with a <u>Physical World Model</u>, a cross-embodied <u>Visual-Language Action Model</u> (VLA), a <u>Perception Model</u>, a <u>Memory Model</u>, and a <u>Control Model</u> to help robots learn, predict, and memory across various tasks and embodiments.
 
 At the same time, **CYBER** also provide millions of human operation datasets and baseline models over HuggingFace 🤗 to enhance embodied learning, and experimental evalaution tool box to help researchers to test and evaluate their models in both simulation and real world.
 
@@ -30,6 +30,8 @@ At the same time, **CYBER** also provide millions of human operation datasets an
 - [**👁️ Perception Model**](docs/tutorial/preception.md): Processes sensory inputs to perceive and interpret surroundings.
 - [**🧠 Memory Model**](docs/tutorial/memory.md): Utilizes past experiences to inform current decisions.
 - [**🎮 Control Model**](docs/tutorial/control.md): Manages control inputs for movement and interaction.
+
+**🌍 World Model** is now available. Additional models will be released soon.
 
 ## ⚙️ Setup
 
@@ -65,20 +67,20 @@ Alternatively, you can install it manually by following the steps below:
 
 ### Available Data
 
-Currently, four tasks are avaible for download:
+Currently, four tasks are available for download:
 
-- 🤗 [Pipette](https://huggingface.co/datasets/cyberorigin/cyber_pipette)
-- 🤗 [Take Item](https://huggingface.co/datasets/cyberorigin/cyber_take_the_item)
-- 🤗 [Twist Tube](https://huggingface.co/datasets/cyberorigin/cyber_twist_the_tube)
-- 🤗 [Fold Towels](https://huggingface.co/datasets/cyberorigin/cyber_fold_towels)
+- 🤗 [Pipette](https://huggingface.co/datasets/cyberorigin/cyber_pipette): Bimanual human demonstration dataset of precision pipetting tasks for laboratory manipulation.
+- 🤗 [Take Item](https://huggingface.co/datasets/cyberorigin/cyber_take_the_item): Single-arm manipulation demonstrations of object pick-and-place tasks.
+- 🤗 [Twist Tube](https://huggingface.co/datasets/cyberorigin/cyber_twist_the_tube): Bimanual demonstration dataset of coordinated tube manipulation sequences.
+- 🤗 [Fold Towels](https://huggingface.co/datasets/cyberorigin/cyber_fold_towels): Bimanual manipulation demonstrations of deformable object folding procedures.
 
 ### Available Models
 
 Our pretrained models will be released on Hugging Face soon:
 
-- [Cyber-World-Large](https://huggingface.co/cyberorigin/cyber-xlarge)
-- [Cyber-World-Base](https://huggingface.co/cyberorigin/cyber-large)
-- [Cyber-World-Small](https://huggingface.co/cyberorigin/cyber-base)
+- Cyber-World-Large (Coming Soon)
+- Cyber-World-Base(Coming Soon)
+- Cyber-World-Small (Coming Soon)
 
 ### Using the Models
 
@@ -134,11 +136,9 @@ Please refer to the [experiments](experiments/README.md) for more details on dat
 
 ### 📕 References
 
-Magvit2 and GENIE adapted from [1xGPT challege](https://github.com/1x-technologies/1xgpt)
+[Magvit2](https://github.com/TencentARC/Open-MAGVIT2) and [GENIE](https://arxiv.org/abs/2402.15391) adapted from [1xGPT Challenge](https://github.com/1x-technologies/1xgpt)
 1X Technologies. (2024). 1X World Model Challenge (Version 1.1) [Data set]
 
-- [MetaSLAM Github](https://github.com/MetaSLAM)
-- [MetaSLAM website](https://metaslam.github.io/)
 
 ```bibtex
 @inproceedings{wang2024hpt,
@@ -148,15 +148,70 @@ booktitle = {Neurips},
 year      = {2024}
 }
 ```
-
 ```bibtex
-@inproceedings{wang2024hpt,
-author    = {Lirui Wang, Xinlei Chen, Jialiang Zhao, Kaiming He},
-title     = {Scaling Proprioceptive-Visual Learning with Heterogeneous Pre-trained Transformers},
-booktitle = {Neurips},
-year      = {2024}
+@article{luo2024open,
+  title={Open-MAGVIT2: An Open-Source Project Toward Democratizing Auto-regressive Visual Generation},
+  author={Luo, Zhuoyan and Shi, Fengyuan and Ge, Yixiao and Yang, Yujiu and Wang, Limin and Shan, Ying},
+  journal={arXiv preprint arXiv:2409.04410},
+  year={2024}
 }
 ```
 
-## Contact
+## 📄 Dataset Metadata
+<div itemscope itemtype="http://schema.org/Dataset">
+<table>
+  <tr>
+    <th>property</th>
+    <th>value</th>
+  </tr>
+  <tr>
+    <td>name</td>
+    <td><code itemprop="name">CyberOrigin Dataset</code></td>
+  </tr>
+  <tr>
+    <td>url</td>
+    <td><code itemprop="url">https://github.com/CyberOrigin2077/Cyber</code></td>
+  </tr>
+  <tr>
+    <td>description</td>
+    <td><code itemprop="description">Cyber represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed CyberOrigin Dataset, pushing the boundaries of artificial intelligence and machine learning.</code></td>
+  </tr>
+  <tr>
+    <td>provider</td>
+    <td>
+      <div itemscope itemtype="http://schema.org/Organization" itemprop="provider">
+        <table>
+          <tr>
+            <th>property</th>
+            <th>value</th>
+          </tr>
+          <tr>
+            <td>name</td>
+            <td><code itemprop="name">CyberOrigin</code></td>
+          </tr>
+        </table>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>license</td>
+    <td>
+      <div itemscope itemtype="http://schema.org/CreativeWork" itemprop="license">
+        <table>
+          <tr>
+            <th>property</th>
+            <th>value</th>
+          </tr>
+          <tr>
+            <td>name</td>
+            <td><code itemprop="name">Apache 2.0</code></td>
+          </tr>
+        </table>
+      </div>
+    </td>
+  </tr>
+</table>
+</div>
+
+## 📫 Contact
 If you have technical questions, please open a GitHub issue. For business development or other collaboration inquiries, feel free to contact us through email 📧 (<contact@cyberorigin.ai>). Enjoy! 🎉
