@@ -22,7 +22,7 @@ import torchvision.transforms.v2.functional as transforms_f
 from einops import rearrange
 from matplotlib import pyplot as plt
 
-from cyber.models.world.dynamic.genie.data import RawTokenDataset
+from cyber.dataset import RawTokenDataset
 from cyber.models.world.autoencoder.magvit2.config import VQConfig
 from cyber.models.world.autoencoder.magvit2.models.lfqgan import VQModel
 

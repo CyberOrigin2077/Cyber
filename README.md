@@ -82,9 +82,9 @@ Our pretrained models will be released on Hugging Face soon:
 - Cyber-World-Base(Coming Soon)
 - Cyber-World-Small (Coming Soon)
 
-### Using the Models
+### Using the Models (Coming Soon)
 
-To use our models in your project, you can install the `transformers` library and load the models as follows:
+<!-- To use our models in your project, you can install the `transformers` library and load the models as follows:
 
 ```python
 from transformers import AutoModel, AutoTokenizer
@@ -98,7 +98,7 @@ inputs = tokenizer("Hello, world!", return_tensors="pt")
 outputs = model(**inputs)
 ```
 
-For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index).
+For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index). -->
 
 
 ## 🕹️ Usage
