@@ -24,7 +24,6 @@ from torch.nn import Module
 
 from einops import rearrange, reduce, pack, unpack
 
-from magvit2.config import VQConfig
 
 # constants
 
@@ -127,7 +126,7 @@ def entropy_loss(
 
 
 class LFQ(Module):
-    def __init__(self, config: VQConfig):
+    def __init__(self, config):
         super().__init__()
 
         # some assert validations

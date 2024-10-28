@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-from magvit2.config import VQConfig
-
 
 def swish(x):
     # swish
@@ -54,7 +52,7 @@ class ResBlock(nn.Module):
 class Encoder(nn.Module):
     def __init__(
         # self, *, ch, out_ch, in_channels, num_res_blocks, z_channels, ch_mult=(1, 2, 2, 4),
-        self, config: VQConfig,
+        self, config, # now accepts omegaconf
     ):
         super().__init__()
 
@@ -123,7 +121,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     # def __init__(self, *, ch, out_ch, in_channels, num_res_blocks, z_channels, ch_mult=(1, 2, 2, 4)) -> None:
-    def __init__(self, config: VQConfig) -> None:
+    def __init__(self, config) -> None: # now accepts OmegaConf
         super().__init__()
 
         self.base_channels = config.base_channels

@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 import numpy as np
-from cyber.dataset.CyberDataset import BaseCyberDataset
+from cyber.dataset.cyberdataset import BaseCyberDataset
 
 
 class RawVideoDataset(BaseCyberDataset):

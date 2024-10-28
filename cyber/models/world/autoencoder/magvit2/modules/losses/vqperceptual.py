@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from magvit2.config import VQConfig
 from magvit2.modules.losses.lpips import LPIPS
 from magvit2.modules.discriminator.model import NLayerDiscriminator, weights_init
 
@@ -102,7 +101,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
     #              commit_weight = 0.25, codebook_enlarge_ratio=3, codebook_enlarge_steps=2000,
     #              perceptual_weight=1.0, use_actnorm=False, disc_conditional=False,
     #              disc_ndf=64, disc_loss="hinge", gen_loss_weight=None, lecam_loss_weight=None):
-    def __init__(self, config: VQConfig):
+    def __init__(self, config):
         super().__init__()
         assert config.disc_loss in ["hinge", "vanilla", "non_saturate"]
         self.codebook_weight = config.codebook_weight

@@ -2,7 +2,7 @@ import numpy as np
 
 
 def match_timestamps(times_a, times_b):
-    '''
+    """
     Match two lists of timestamps by closeness in time.
     inputs:
         times_a: list of ascending timestamps
@@ -12,12 +12,12 @@ def match_timestamps(times_a, times_b):
         matches_b: list of indices into times_a for each element of times_b
         diffs_a: list of differences between each element of times_a and its match in times_b
         diffs_b: list of differences between each element of times_b and its match in times_a
-    '''
+    """
     i, j = 0, 0
     matches_a = [-1] * len(times_a)
     matches_b = [-1] * len(times_b)
-    diffs_a = [float('inf')] * len(times_a)
-    diffs_b = [float('inf')] * len(times_b)
+    diffs_a = [float("inf")] * len(times_a)
+    diffs_b = [float("inf")] * len(times_b)
     while i < len(times_a) and j < len(times_b):
         curdiff = abs(times_a[i] - times_b[j])
         if curdiff < diffs_a[i]:
@@ -42,7 +42,7 @@ def match_timestamps(times_a, times_b):
 
 class ConcatMemmap(object):
     def __init__(self, dtype: np.dtype = np.float32):
-        '''
+        """
         create an empty ConcatMemmap object
 
         Args:
@@ -50,19 +50,19 @@ class ConcatMemmap(object):
 
         Returns:
             ConcatMemmap: the empty ConcatMemmap object
-        '''
+        """
         self.dtype = dtype
-        self.data = []
-        self.indmap = []
-        self.accumulatedLength = [0]
+        self.data: list[np.memmap] = []
+        self.indmap: list[int] = []
+        self.accumulatedLength: list[int] = [0]
 
     def append(self, data: np.memmap):
-        '''
+        """
         append a memmap to the ConcatMemmap
 
         Args:
             data(np.ndarray): the data to append
-        '''
+        """
         assert data.dtype == self.dtype, f"Expected data to have dtype {self.dtype}, got {data.dtype}"
         memmap_ind = len(self.data)
         self.data.append(data)
@@ -70,7 +70,7 @@ class ConcatMemmap(object):
         self.accumulatedLength.append(len(data) + self.accumulatedLength[memmap_ind])
 
     def __getitem__(self, index):
-        '''
+        """
         get item from the ConcatMemmap.
         This is a nuanced operation because a slice can technically span multiple memmaps.
         Currently, we don't allow that here to preserve the time complexity signature of slicing
@@ -80,14 +80,12 @@ class ConcatMemmap(object):
 
         Returns:
             np.ndarray: the data at the given index
-        '''
+        """
         if isinstance(index, slice):
             if index.stop > len(self):
                 raise IndexError("Index out of bounds")
             super_index = self.indmap[index.start]
-            sub_index = slice(index.start - self.accumulatedLength[super_index],
-                              index.stop - self.accumulatedLength[super_index],
-                              index.step)
+            sub_index = slice(index.start - self.accumulatedLength[super_index], index.stop - self.accumulatedLength[super_index], index.step)
             if sub_index.stop > len(self.data[super_index]):
                 raise IndexError(f"Slice {index} out of bounds, slicing across memmaps currently not supported")
         else:
@@ -96,10 +94,10 @@ class ConcatMemmap(object):
         return self.data[super_index][sub_index]
 
     def __len__(self):
-        '''
+        """
         get the length of the ConcatMemmap
 
         Returns:
             int: the length of the ConcatMemmap
-        '''
+        """
         return len(self.indmap)

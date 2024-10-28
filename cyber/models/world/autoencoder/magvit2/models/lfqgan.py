@@ -11,7 +11,6 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 
-from magvit2.config import VQConfig
 from magvit2.modules.diffusionmodules.improved_model import Encoder, Decoder
 from magvit2.modules.losses.vqperceptual import VQLPIPSWithDiscriminator
 from magvit2.modules.vqvae.lookup_free_quantize import LFQ
@@ -22,7 +21,7 @@ from magvit2.modules.ema import LitEma
 class VQModel(L.LightningModule):
     def __init__(
         self,
-        config: VQConfig,
+        config, # now accepts OmegaConf
         training_args=None,
         ckpt_path=None,
         ignore_keys=[],

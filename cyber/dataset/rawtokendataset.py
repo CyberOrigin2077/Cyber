@@ -19,8 +19,8 @@ class RawTokenDataset(TorchDataset):
     ):
         """
         Args:
-            data_dir: directory with the same format as `data/train_v0` and `data/val_v0`.
-                Notably, has `video.bin` and `metadata.json`
+            data_dir: directory with the same format as `data`.
+                Notably, has `video_id.bin`, `metadata_id.json`, and `segment_ids_id.bin` files.
             window_size: number of frames per "video" sequence
             stride: frame skip
             filter_overlaps: If False (default), one frame will appear in multiple examples;

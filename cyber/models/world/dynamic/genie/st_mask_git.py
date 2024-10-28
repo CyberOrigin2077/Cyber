@@ -1,21 +1,25 @@
+import random
 import math
+import os
+import logging
 
 import mup
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from huggingface_hub import PyTorchModelHubMixin
 from tqdm import tqdm
-from transformers.utils import ModelOutput
+from omegaconf import OmegaConf
 
-from genie.factorization_utils import FactorizedEmbedding, factorize_labels
-# from genie.config import GenieConfig
-from genie.st_transformer import STTransformerDecoder
+
+from cyber.models.world import DynamicModel
+from cyber.models.world.dynamic.genie.factorization_utils import FactorizedEmbedding, factorize_labels, factorize_token_ids, unfactorize_token_ids
+from cyber.models.world.dynamic.genie.st_transformer import STTransformerDecoder
+from cyber.utils.module import load_statedict_from_file
 
 
 def cosine_schedule(u):
-    """ u in [0, 1] """
+    """u in [0, 1]"""
     if isinstance(u, torch.Tensor):
         cls = torch
     elif isinstance(u, float):
@@ -26,9 +30,9 @@ def cosine_schedule(u):
     return cls.cos(u * cls.pi / 2)
 
 
-class STMaskGIT(nn.Module, PyTorchModelHubMixin):
+class STMaskGIT(DynamicModel):
     # Next-Token prediction as done in https://arxiv.org/pdf/2402.15391.pdf
-    def __init__(self, config): # this now accepts omegaconf config
+    def __init__(self, config):  # this now accepts omegaconf config
         super().__init__()
         self.h = self.w = math.isqrt(config.S)
         assert self.h**2 == config.S, "Expected S to be square"
@@ -62,53 +66,43 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
 
         self.config = config
 
-    def generate(
+    def forward(
         self,
-        input_ids: torch.LongTensor,
-        attention_mask: torch.LongTensor,
-        max_new_tokens: int,
-        min_new_tokens: int = None,
+        x: torch.Tensor,
+        frames_to_generate: int,
         return_logits: int = False,
         maskgit_steps: int = 1,
         temperature: float = 0.0,
-    ) -> tuple[torch.LongTensor, torch.FloatTensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Args designed to match the format of Llama.
-        We ignore `attention_mask`, and use `max_new_tokens` to determine the number of frames to generate.
+        Generates `frames_to_generate` frames given `x`.
 
-        Returns: `(sample_THW, factored_logits)` if `return_logits` else `sample_THW`
-            sample_THW: size (B, num_new_frames * H * W) corresponding to autoregressively generated
-                unfactorized token ids for future frames.
-            Optionally, factored_logits: size (B, factored_vocab_size, num_factored_vocabs, num_new_frames, H, W).
+        Args:
+            x(torch.Tensor[torch.long]): Input tokens, size (B, T' * H * W) where T' = T - frames_to_generate.
+            frames_to_generate: Number of frames to generate.
+            return_logits: If True, will return the logits for each generated frame.
+            maskgit_steps: Number of MaskGIT-style inference steps to take.
+            temperature: Sampling temperature.
+
+        Returns: (predicted_tokens, factored_logits) if `return_logits` else predicted_tokens
         """
-        assert min_new_tokens in (None, max_new_tokens), \
-            "Expecting `min_new_tokens`, if specified, to match `max_new_tokens`."
+        assert x.dtype is torch.long
 
-        assert max_new_tokens % self.config.S == 0, "Expecting `max_new_tokens` to be a multiple of `self.config.S`."
-        num_new_frames = max_new_tokens // self.config.S
-
-        inputs_THW = rearrange(input_ids.clone(), "b (t h w) -> b t h w", h=self.h, w=self.w)
-        inputs_masked_THW = torch.cat([
-            inputs_THW,
-            torch.full((input_ids.size(0), num_new_frames, self.h, self.w),
-                       self.mask_token_id, dtype=torch.long, device=input_ids.device)
-        ], dim=1)
+        inputs_THW = rearrange(x.clone(), "b (t h w) -> b t h w", h=self.h, w=self.w)
+        inputs_masked_THW = torch.cat(
+            [inputs_THW, torch.full((x.size(0), frames_to_generate, self.h, self.w), self.mask_token_id, dtype=torch.long, device=x.device)], dim=1
+        )
 
         all_factored_logits = []
-        for timestep in range(inputs_THW.size(1), inputs_THW.size(1) + num_new_frames):
+        for timestep in range(inputs_THW.size(1), inputs_THW.size(1) + frames_to_generate):
             # could change sampling hparams
-            sample_HW, factored_logits = self.maskgit_generate(
-                inputs_masked_THW,
-                timestep,
-                maskgit_steps=maskgit_steps,
-                temperature=temperature
-            )
+            sample_HW, factored_logits = self.maskgit_generate(inputs_masked_THW, timestep, maskgit_steps=maskgit_steps, temperature=temperature)
             inputs_masked_THW[:, timestep] = sample_HW
             all_factored_logits.append(factored_logits)
 
         predicted_tokens = rearrange(inputs_masked_THW, "B T H W -> B (T H W)")
         if return_logits:
-            return predicted_tokens, torch.stack(all_factored_logits, dim=3)  # (b, factored_vocab_size, num_factored_vocabs, num_new_frames, h, w)
+            return predicted_tokens, torch.stack(all_factored_logits, dim=3)  # (b, factored_vocab_size, num_factored_vocabs, frames_to_generate, h, w)
         else:
             return predicted_tokens
 
@@ -122,17 +116,17 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
     @torch.no_grad()
     def maskgit_generate(
         self,
-        prompt_THW: torch.LongTensor,
+        prompt_THW: torch.Tensor,
         out_t: int,
         maskgit_steps: int = 1,
         temperature: float = 0.0,
         unmask_mode: str = "random",
-    ) -> tuple[torch.LongTensor, torch.FloatTensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Performs MaskGIT-style inference to predict frame `out_t`.
 
         Args:
-            prompt_THW: Unfactorized token ids, size (B, T, H, W)
+            prompt_THW(torch.Tensor[torch.long]): Unfactorized token ids, size (B, T, H, W)
             out_t: Will return predicted unfactorized token ids for this frame.
                 Should be >= 1 as the 0th frame is assumed to be given.
                 Expects all future frames to be fully masked.
@@ -150,10 +144,10 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
             sample_HW: size (B, H, W) corresponding to predicted unfactorized token ids for frame `out_t`.
             factored_logits: size (B, factored_vocab_size, num_factored_vocabs, H, W).
         """
+        assert prompt_THW.dtype is torch.long
         # assume we have pre-masked z{out_t}...zT with all masks
         assert out_t, "maskgit_generate requires out_t > 0"
-        assert torch.all(prompt_THW[:, out_t:] == self.mask_token_id), \
-            f"when generating z{out_t}, frames {out_t} and later must be masked"
+        assert torch.all(prompt_THW[:, out_t:] == self.mask_token_id), f"when generating z{out_t}, frames {out_t} and later must be masked"
 
         bs, t, h, w = prompt_THW.size(0), prompt_THW.size(1), prompt_THW.size(2), prompt_THW.size(3)
 
@@ -168,9 +162,12 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
             if step > 0:  # recompute logits with updated prompt
                 logits_CHW = self.compute_logits(prompt_THW)[:, :, out_t]
 
-            factored_logits = rearrange(logits_CHW, "b (num_vocabs vocab_size) h w -> b vocab_size num_vocabs h w",
-                                        vocab_size=self.config.factored_vocab_size,
-                                        num_vocabs=self.config.num_factored_vocabs)
+            factored_logits = rearrange(
+                logits_CHW,
+                "b (num_vocabs vocab_size) h w -> b vocab_size num_vocabs h w",
+                vocab_size=self.config.factored_vocab_size,
+                num_vocabs=self.config.num_factored_vocabs,
+            )
 
             factored_probs = torch.nn.functional.softmax(factored_logits, dim=1)
 
@@ -181,9 +178,7 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
                     sample = probs.argmax(dim=1)
                 else:
                     # Categorical expects last dim to be channel dim
-                    dist = torch.distributions.categorical.Categorical(
-                        probs=rearrange(probs, "b vocab_size ... -> b ... vocab_size") / temperature
-                    )
+                    dist = torch.distributions.categorical.Categorical(probs=rearrange(probs, "b vocab_size ... -> b ... vocab_size") / temperature)
                     sample = dist.sample()
                 samples_HW *= self.config.factored_vocab_size
                 samples_HW += sample
@@ -206,8 +201,7 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
                     confidences_flat = torch.rand_like(confidences_HW).reshape(bs, self.config.S)
                     # not probability distribution anymore, but only relative order matters
                 else:
-                    raise NotImplementedError(f"Expected `unmask_mode` to be one of ['greedy', 'random'], "
-                                              f"got {unmask_mode}")
+                    raise NotImplementedError(f"Expected `unmask_mode` to be one of ['greedy', 'random'], " f"got {unmask_mode}")
 
                 confidences_flat[unmasked] = torch.inf
                 least_confident_tokens = torch.argsort(confidences_flat, dim=1)
@@ -224,18 +218,24 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
 
         # Return the final sample and logits
         return samples_HW, rearrange(
-            orig_logits_CHW, "B (num_vocabs vocab_size) H W -> B vocab_size num_vocabs H W",
-            vocab_size=self.config.factored_vocab_size, num_vocabs=self.config.num_factored_vocabs, H=h, W=w
+            orig_logits_CHW,
+            "B (num_vocabs vocab_size) H W -> B vocab_size num_vocabs H W",
+            vocab_size=self.config.factored_vocab_size,
+            num_vocabs=self.config.num_factored_vocabs,
+            H=h,
+            W=w,
         )
 
     def compute_loss_and_acc(self, logits_CTHW, targets_THW, relevant_mask_THW):
         # Video token prediction
         targets_THW = targets_THW.clone()
         logits_CTHW, targets_THW = logits_CTHW[:, :, 1:], targets_THW[:, 1:]  # first frame always unmasked
-        factored_logits = rearrange(logits_CTHW,
-                                    "b (num_vocabs vocab_size) t h w -> b vocab_size num_vocabs t h w",
-                                    vocab_size=self.config.factored_vocab_size,
-                                    num_vocabs=self.config.num_factored_vocabs)
+        factored_logits = rearrange(
+            logits_CTHW,
+            "b (num_vocabs vocab_size) t h w -> b vocab_size num_vocabs t h w",
+            vocab_size=self.config.factored_vocab_size,
+            num_vocabs=self.config.num_factored_vocabs,
+        )
         factored_targets = factorize_labels(targets_THW)
 
         loss_THW = F.cross_entropy(factored_logits, factored_targets, reduction="none").sum(dim=1)
@@ -262,23 +262,35 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
         logits_CTHW = rearrange(x_next_TSC, "B T (H W) C -> B C T H W", H=self.h, W=self.w)
         return logits_CTHW
 
-    def forward(self, input_ids, labels):
-        T, H, W = self.config.T, self.h, self.w
-        x_THW = rearrange(input_ids, "B (T H W) -> B T H W", T=T, H=H, W=W)
+    def compute_training_loss(self, x: torch.Tensor, labels: torch.Tensor):
+        """
+        Compute the training loss for the module given input tokens and labels.
 
+        Args:
+            x(torch.LongTensor): The input tokens, size (B, T * H * W)
+            labels(torch.LongTensor): The target tokens, size (B, T * H * W)
+
+        Returns:
+            relevant_loss(torch.FloatTensor): The cross entropy loss of the input.
+        """
+        assert x.dtype is torch.long
+        assert labels.dtype is torch.long
+
+        T, H, W = self.config.T, self.h, self.w
+        x_THW = rearrange(x, "B (T H W) -> B T H W", T=T, H=H, W=W)
         logits_CTHW = self.compute_logits(x_THW)
 
         labels = rearrange(labels, "B (T H W) -> B T H W", T=T, H=H, W=W)
 
         # Record the loss over masked tokens only to make it more comparable to LLM baselines
         relevant_mask = x_THW[:, 1:] == self.mask_token_id  # could also get mask of corrupted tokens by uncommenting line in `get_maskgit_collator`
-        relevant_loss, relevant_acc = self.compute_loss_and_acc(logits_CTHW, labels, relevant_mask)
-        
+        relevant_loss, _ = self.compute_loss_and_acc(logits_CTHW, labels, relevant_mask)
+
         # return ModelOutput(loss=relevant_loss, acc=relevant_acc, logits=logits_CTHW)
-        return relevant_loss, relevant_acc, logits_CTHW
+        return relevant_loss
 
     def init_weights(self):
-        """ Works with and without muP. """
+        """Works with and without muP."""
         std = 0.02
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -303,13 +315,82 @@ class STMaskGIT(nn.Module, PyTorchModelHubMixin):
         mup.set_base_shapes(self, base_model, rescale_params=rescale_params)
 
     @classmethod
-    def from_pretrained(cls, *args, **kwargs):
-        """ Extra logic for muP. """
-        model = super().from_pretrained(*args, **kwargs)
+    def from_pretrained(cls, path: str):
+        """Extra logic for muP."""
+        sd = load_statedict_from_file(os.path.join(path, "model.safetensors"))
+        conf = OmegaConf.load(os.path.join(path, "config.yaml"))
+        model = cls(conf)
+        missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+        if missing_keys or unexpected_keys:
+            raise ValueError(f"Missing keys: {missing_keys}, Unexpected keys: {unexpected_keys}")
         if model.config.use_mup:
             model.set_mup_shapes(rescale_params=False)
-
+        logging.info(f"Restored pretrained model from {path}")
         return model
+
+    def get_train_collator(self):
+        return get_maskgit_collator(self.config)
+
+
+def get_maskgit_collator(config):
+    mask_token_id = config.image_vocab_size
+    h = w = math.isqrt(config.S)
+
+    def collate_fn(features) -> dict[str, torch.Tensor]:
+        # during training, map (z_0, z_1', z_2') -> (null, z_1, z_2)
+        # (z_0, z_1') -> (null, z_1) is the diffusion operator on z_1' -> z_1
+
+        input_ids = torch.stack([ex["input_ids"] for ex in features])
+        device = input_ids.device
+        x_THW = rearrange(input_ids, "b (t h w) -> b t h w", b=len(features), t=config.T, h=h, w=w)
+        x_THWC = factorize_token_ids(x_THW, config.num_factored_vocabs, config.factored_vocab_size)
+        labels = x_THW.clone()
+
+        # As done in Copilot-4D paper, add random noise sampled with a random rate between 0% and `config.max_corrupt_rate`
+        r = torch.rand(x_THWC.size(), device=device)
+        u01 = torch.rand((), device=device)
+        random_patches_mask = r < config.max_corrupt_rate * u01
+        random_values = torch.randint(low=0, high=config.factored_vocab_size, size=x_THWC.size(), dtype=torch.long, device=device)
+        x_THWC[random_patches_mask] = random_values[random_patches_mask]
+
+        if random.random() < config.non_mlm_ratio:  # Closer to autoregressive inference
+            # Leave frames [0, first_masked_frame) unmasked.
+            first_masked_frame = random.randint(config.num_prompt_frames, config.T - 1)
+            x_THWC_view = x_THWC[:, first_masked_frame:]
+
+            # Arbitrary numbers here, but corrupting later frames more
+            # since we likely have compounding errors.
+            correct_rate = random.uniform(0.25, 1.0)
+            for i in range(x_THWC_view.size(1)):
+                correct_rate *= random.uniform(0.9, 1.0)
+                r = torch.rand((len(features), h, w, config.num_factored_vocabs), device=device)
+                random_patches_mask = r > correct_rate
+                x_THWC_view[:, i][random_patches_mask] = random_values[:, first_masked_frame + i][random_patches_mask]
+        else:  # Typical MLM masking
+            first_masked_frame = 1
+
+        mask = torch.zeros(1)
+        c = 0
+        while mask.max() == 0:  # We could get unlucky and mask no tokens?
+            # per-minibatch, per-frame masking probability (could try variable masking rate from MUSE)
+            mask_prob_T = cosine_schedule(torch.rand(len(features), config.T - first_masked_frame, 1, 1))
+
+            r = torch.rand_like(x_THW[:, first_masked_frame:], dtype=torch.float)
+            mask = r < mask_prob_T
+            c += 1
+
+        if c > 1:
+            print(f"Generated mask {c} > 1 times.")
+
+        x_THW = unfactorize_token_ids(x_THWC, config.num_factored_vocabs, config.factored_vocab_size)
+        x_THW[:, first_masked_frame:][mask] = mask_token_id
+
+        return {
+            "x": rearrange(x_THW, "b t h w -> b (t h w)"),
+            "labels": rearrange(labels, "b t h w -> b (t h w)"),
+        }
+
+    return collate_fn
 
 
 class FixedMuReadout(mup.MuReadout):

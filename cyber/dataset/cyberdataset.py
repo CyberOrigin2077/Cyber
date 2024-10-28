@@ -102,9 +102,9 @@ class BaseCyberDataset(Dataset):
             dict: formatted data with timestamps
         """
         # query file name for the given modality
-        modality_file = glob(os.path.join(dataset_path, modality_name, f"{episode_id}*"))
-        assert len(modality_file) == 1, f"Expected 1 file for modality {modality_name} in episode {episode_id}, found {len(modality_file)}"
-        modality_file = modality_file[0]
+        modality_files = glob(os.path.join(dataset_path, modality_name, f"{episode_id}*"))
+        assert len(modality_files) == 1, f"Expected 1 file for modality {modality_name} in episode {episode_id}, found {len(modality_files)}"
+        modality_file: str = modality_files[0]
         if modality_file.split(".")[-1] == "mp4":
             # load video
             vmetadata = ffmpeg.probe(modality_file)["format"]["tags"]["comment"]
@@ -152,6 +152,9 @@ class BaseCyberDataset(Dataset):
             data = np.array(data)[sorted_indices]
             return {"timestamps": timestamps, "data": data}
 
+        else:
+            raise ValueError(f"Unsupported modality file format: {modality_file.split('.')[-1]}")
+
     @staticmethod
     def _load_modality_timestamps(dataset_path: str, episode_id: str, modality_name: str) -> list:
         """
@@ -166,9 +169,9 @@ class BaseCyberDataset(Dataset):
             list: timestamps for the given modality
         """
         # query file name for the given modality
-        modality_file = glob(os.path.join(dataset_path, modality_name, f"{episode_id}*"))
-        assert len(modality_file) == 1
-        modality_file = modality_file[0]
+        modality_files = glob(os.path.join(dataset_path, modality_name, f"{episode_id}*"))
+        assert len(modality_files) == 1, f"Expected 1 file for modality {modality_name} in episode {episode_id}, found {len(modality_files)}"
+        modality_file = modality_files[0]
         if modality_file.split(".")[-1] == "mp4":
             # load video
             vmetadata = ffmpeg.probe(modality_file)["format"]["tags"]["comment"]
@@ -186,6 +189,9 @@ class BaseCyberDataset(Dataset):
                 members = tar.getmembers()
                 timestamps = [float(member.name.split("/")[-1][:-4]) for member in members if member.name.endswith(".jxl") or member.name.endswith(".png")]
             return timestamps
+
+        else:
+            raise ValueError(f"Unsupported modality file format: {modality_file.split('.')[-1]}")
 
     def __len__(self):
         return len(self.episode_discription)
