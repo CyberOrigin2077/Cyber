@@ -1,19 +1,22 @@
 # import logging
 # logging.basicConfig(level = logging.INFO)
 
-import matplotlib.pyplot as plt
-from omegaconf import OmegaConf
-from tqdm import tqdm
-
-import torch
-from torch.utils.data import random_split
-
-from cyber.models.world.dynamic import STMaskGIT
-from cyber.models import CyberModule
-from cyber.dataset import RawTokenDataset
-
+import logging
 import os
 import time
+
+import matplotlib.pyplot as plt
+import torch
+from omegaconf import OmegaConf
+from torch.utils.data import random_split
+from tqdm import tqdm
+
+from cyber.dataset import RawTokenDataset
+from cyber.models import CyberModule
+from cyber.models.world.dynamic import STMaskGIT
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -44,7 +47,7 @@ def save_checkpoint(model, optimizer, epoch, step, loss, checkpoint_dir):
     checkpoint = {"epoch": epoch, "step": step, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": loss}
     checkpoint_path = f"{checkpoint_dir}/checkpoint_epoch_{epoch}_step_{step}.pth"
     torch.save(checkpoint, checkpoint_path)
-    print(f"Checkpoint saved to {checkpoint_path}")
+    logger.info(f"Checkpoint saved to {checkpoint_path}")
 
 
 def validate(model, val_dataloader, val_steps=0):

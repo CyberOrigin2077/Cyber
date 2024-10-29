@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -8,15 +9,14 @@ from torch.utils.data import Dataset as TorchDataset
 from .utils import ConcatMemmap
 
 
+# Create a package-level logger
+logger = logging.getLogger(__name__)
+
+
 class RawTokenDataset(TorchDataset):
-    """ Loads raw uint32 tokens as memmap-backed array """
-    def __init__(
-        self,
-        data_dir,
-        window_size,
-        stride=1,
-        filter_overlaps=False
-    ):
+    """Loads raw uint32 tokens as memmap-backed array"""
+
+    def __init__(self, data_dir, window_size, stride=1, filter_overlaps=False):
         """
         Args:
             data_dir: directory with the same format as `data`.
@@ -62,16 +62,10 @@ class RawTokenDataset(TorchDataset):
                 metadata = json.load(f)
 
             shape = (metadata["num_images"], metadata["s"], metadata["s"])
-            video_tokens_path, segment_ids_path = [data_dir / f"{name}_{idx}.bin"
-                                                        for name in ["videos", "segment_ids"]]
+            video_tokens_path, segment_ids_path = [data_dir / f"{name}_{idx}.bin" for name in ["videos", "segment_ids"]]
             self.data.append(np.memmap(video_tokens_path, dtype=self.token_dtype, mode="r", shape=shape))
 
-            self.segment_ids.append(np.memmap(
-                segment_ids_path,
-                dtype=np.int32,
-                mode="r",
-                shape=(metadata["num_images"],)
-            ))
+            self.segment_ids.append(np.memmap(segment_ids_path, dtype=np.int32, mode="r", shape=(metadata["num_images"],)))
 
         self.valid_start_inds = []
         for start_ind in range(len(self.data) - self.video_len):
@@ -88,7 +82,7 @@ class RawTokenDataset(TorchDataset):
                 overlapping_start_inds = {start_ind - i * self.stride for i in range(1, self.window_size)}
                 # all sequences from `overlapping_start_inds` will also contain `start_ind`,
                 # so exclude sequence starting from `start_ind` if any of `overlapping_start_inds` is already being used
-                for existing_start_ind in filtered_start_inds[-self.window_size * self.stride:]:
+                for existing_start_ind in filtered_start_inds[-self.window_size * self.stride :]:
                     # Bound could be improved
                     if existing_start_ind in overlapping_start_inds:
                         break
@@ -102,9 +96,9 @@ class RawTokenDataset(TorchDataset):
 
     @staticmethod
     def tokenize_action(action, action_min, action_max):
-        '''
+        """
         this function tokenizes the action values
-        '''
+        """
         # normalize the action values
         action = (action - action_min) / (action_max - action_min)
         # quantize the action values

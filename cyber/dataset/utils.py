@@ -1,4 +1,10 @@
+import logging
+
 import numpy as np
+
+
+# Create a package-level logger
+logger = logging.getLogger(__name__)
 
 
 def match_timestamps(times_a, times_b):

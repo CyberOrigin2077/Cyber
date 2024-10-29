@@ -1,19 +1,23 @@
-import os
-import logging
-import torch
-from torch.utils.data import Dataset
-import pandas as pd
 import json
-import imageio
-import ffmpeg
+import logging
+import os
 import tarfile
+from glob import glob
+
+import ffmpeg
+import imageio
 import jxlpy
 import numpy as np
-from glob import glob
+import pandas as pd
+import torch
 from decord import VideoReader
 from decord import cpu
+from torch.utils.data import Dataset
 
 from cyber.dataset.utils import match_timestamps
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseCyberDataset(Dataset):
@@ -204,7 +208,7 @@ class BaseCyberDataset(Dataset):
         for modality_name, modality_data in data.items():
             if modality_data["data"].dtype == np.uint16:
                 # uint16 is not supported by torch, raise a warning
-                logging.warning(f"modality :{modality_name} has dtype uint16 not supported by torch, skipping")
+                logger.warning(f"modality :{modality_name} has dtype uint16 not supported by torch, skipping")
                 continue
             if modality_name == "color":
                 keep_indices = list(range(len(modality_data["timestamps"])))
