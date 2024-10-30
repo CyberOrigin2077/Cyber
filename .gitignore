@@ -141,7 +141,6 @@ secrets.env
 subsample_val.py
 data/
 output/
-test/
 
 .DS_Store
 
