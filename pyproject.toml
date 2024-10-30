@@ -49,6 +49,7 @@ extend-exclude = [
 "cyber/models/world/dynamic/genie/**.py" = ["ALL"]
 
 [tool.ruff.lint]
+extend-ignore = ["T203"]  # Allow logging.warning
 select = ["F", "E"]
 extend-select = ["W", "C90", "I", "N", "B", "A", "C4", "PERF", "RUF", "T201"]
 ignore = ["I001"]
@@ -175,6 +176,8 @@ av = "13.0.0"
 imageio = {extras = ["ffmpeg"], version = "^2.36.0"}
 prettytable = "^3.11.0"
 types-tqdm = "^4.66.0.20240417"
+opencv-python = "^4.10.0.84"
+types-requests = "^2.32.0.20241016"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -200,6 +203,7 @@ mkdocstrings = ">=0.25.2"
 mkdocs-material = ">=9.5.33"
 mkdocstrings-python = ">=1.10.8"
 pygments = ">=2.18.0"
+types-requests = "^2.32.0.20241016"
 
 [build-system]
 requires = ["poetry-core"]

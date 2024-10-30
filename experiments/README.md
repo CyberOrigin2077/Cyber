@@ -77,10 +77,10 @@ python models/world/train.py -h
 Code is modified from [1XGPT](https://github.com/1x-technologies/1xgpt) and [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2) but removed unnecessary files and code.
 
 **Pretrained checkpoint**</br>
-Download the checkpoint [HERE](https://huggingface.co/datasets/1x-technologies/worldmodel/blob/main/magvit2.ckpt) Or run the command:
+Download the checkpoint [HERE](https://huggingface.co/TencentARC/Open-MAGVIT2/blob/main/imagenet_256_L.ckpt) Or run the command:
 
 ```
-huggingface-cli download 1x-technologies/worldmodel magvit2.ckpt --repo-type dataset --local-dir ./experiments/
+huggingface-cli download TencentARC/Open-MAGVIT2 imagenet_256_L.ckpt --repo-type dataset --local-dir ./experiments/
 ```
 
 **Try with our provided samples**</br>

@@ -1,39 +1,42 @@
 encoder:
-  class_path: cyber.models.world.autoencoder.VQModel
-  init_args:
-    in_channels: 3
-    z_channels: 18
-    out_channels: 3
-    base_channels: 128
-    ch_mult:
-    - 1
-    - 1
-    - 2
-    - 2
-    - 4
-    num_res_blocks: 2
-    disc_conditional: false
-    disc_in_channels: 3
-    disc_start: 0
-    disc_loss: hinge
-    disc_ndf: 64
-    disc_num_layers: 3
-    use_actnorm: false
-    disc_factor: 1.0
-    disc_weight: 0.8
-    gen_loss_weight: 0.1
-    lecam_loss_weight: 0.005
-    codebook_weight: 0.1
-    commit_weight: 0.25
-    pixelloss_weight: 1.0
-    perceptual_weight: 1.0
-    codebook_enlarge_ratio: 0
-    codebook_enlarge_steps: 2000
-    num_codebooks: 1
-    codebook_size: 262144
-    sample_minimization_weight: 1.0
-    batch_maximization_weight: 1.0
-    token_factorization: false
+  seed_everything: true
+  model:
+    class_path: cyber.models.world.autoencoder.VQModel
+    init_args:
+      ddconfig:
+        double_z: False
+        z_channels: 18
+        resolution: 128
+        in_channels: 3
+        out_ch: 3
+        ch: 128
+        ch_mult: [1,1,2,2,4]  # num_down = len(ch_mult)-1
+        num_res_blocks: 4
+      lossconfig:
+        class_path: cyber.models.world.autoencoder.magvit2.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
+        init_args:
+          disc_conditional: False
+          disc_in_channels: 3
+          disc_start: 0
+          disc_weight: 0.8
+          gen_loss_weight: 0.1
+          lecam_loss_weight: 0.01
+          codebook_weight: 0.1
+          commit_weight: 0.25
+          codebook_enlarge_ratio: 0
+          codebook_enlarge_steps: 2000
+      n_embed: 262144
+      embed_dim: 18
+      learning_rate: 1e-4
+      sample_minimization_weight: 1.0
+      batch_maximization_weight: 1.0
+      scheduler_type: "None"
+      use_ema: True
+      resume_lr:
+      lr_drop_epoch: [250, 300]
+      ckpt_path: null # to resume
+
+
 dynamic:
   class_path: cyber.models.world.dynamic.genie.st_mask_git.STMaskGIT
   init_args:

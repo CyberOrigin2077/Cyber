@@ -1,13 +1,8 @@
-"""
-Modification of Open-MAGVIT2 code, including adding gradient accumulation during training, using VQConfig,
-removing hardcoded arguments and removing unnecessary code.
-"""
-
 import torch
 import torch.nn.functional as F
 import lightning as L
 
-from collections import OrderedDict
+from cyber.config.utils import instantiate_from_config
 from contextlib import contextmanager
 
 
@@ -19,46 +14,65 @@ from magvit2.modules.ema import LitEma
 
 
 class VQModel(L.LightningModule):
-    def __init__(
-        self,
-        config, # now accepts OmegaConf
-        training_args=None,
-        ckpt_path=None,
-        ignore_keys=[],
-        image_key="image",
-        colorize_nlabels=None,
-        monitor=None,
-        use_ema=True,
-        stage=None,
-    ):
+    def __init__(self, config):
+        """
+        Args:
+            config: Configuration object containing all model parameters
+        """
         super().__init__()
-        self.training_args = training_args
-        self.image_key = image_key
-        self.encoder = Encoder(config)
-        self.decoder = Decoder(config)
-        self.loss = VQLPIPSWithDiscriminator(config)
-        self.quantize = LFQ(config)
-        self.use_ema = use_ema
-        self.stage = stage
+
+        ddconfig = config.get("ddconfig", {})
+        lossconfig = config.get("lossconfig", {})
+
+        self.encoder = Encoder(**ddconfig)
+        self.decoder = Decoder(**ddconfig)
+        self.loss = instantiate_from_config(lossconfig)
+
+        # Quantize
+        self.quantize = LFQ(
+            dim=config.embed_dim,
+            codebook_size=config.n_embed,
+            sample_minimization_weight=config.sample_minimization_weight,
+            batch_maximization_weight=config.batch_maximization_weight,
+            token_factorization=config.get("token_factorization", False),
+            factorized_bits=config.get("factorized_bits", [9, 9]),
+        )
+
+        # Colorize
+        if config.get("colorize_nlabels") is not None:
+            assert isinstance(config.colorize_nlabels, int)
+            self.register_buffer("colorize", torch.randn(3, config.colorize_nlabels, 1, 1))
+
+        if config.get("monitor") is not None:
+            self.monitor = config.monitor
+
+        # ema
+        self.use_ema = config.get("use_ema", False)
+        stage = config.get("stage", None)
+        if self.use_ema and stage is None:  # no need to construct EMA when training Transformer
+            self.model_ema = LitEma(self)
+
+        # load ckpt
+        ckpt_path = config.get("ckpt_path")
         if ckpt_path is not None:
-            self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys, stage=stage)
-        self.image_key = image_key
-        if colorize_nlabels is not None:
-            assert isinstance(colorize_nlabels, int)
-            self.register_buffer("colorize", torch.randn(3, colorize_nlabels, 1, 1))
-        if monitor is not None:
-            self.monitor = monitor
+            self.init_from_ckpt(ckpt_path, ignore_keys=config.get("ignore_keys", []), stage=stage)
 
-        self.generator_params = list(self.encoder.parameters()) + \
-            list(self.decoder.parameters()) + \
-            list(self.quantize.parameters())
+        # training parameters
+        self.learning_rate = config.get("learning_rate")
+        self.resume_lr = config.get("resume_lr")
+        self.lr_drop_epoch = config.get("lr_drop_epoch")
+        self.lr_drop_rate = config.get("lr_drop_rate", 0.1)
+        self.scheduler_type = config.get("scheduler_type", "linear-warmup_cosine-decay")
+        self.warmup_epochs = config.get("warmup_epochs", 1.0)
+        self.min_learning_rate = config.get("min_learning_rate", 0)
 
-        if self.use_ema and stage is None:  # no need to construct ema when training transformer
-            self.model_ema = LitEma(self)  # Note: this means EMA weights are overriden after `init_from_ckpt`.
-
+        self.image_key = config.get("image_key", "image")
         self.automatic_optimization = False
-
         self.strict_loading = False
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(config.model.init_args)
 
     @contextmanager
     def ema_scope(self, context=None):
@@ -75,18 +89,27 @@ class VQModel(L.LightningModule):
                 if context is not None:
                     print(f"{context}: Restored training weights")
 
-    def state_dict(self, *args, destination=None, prefix='', keep_vars=False):
+    def load_state_dict(self, *args, strict=False):
         """
-        save the state_dict and filter out the
+        Resume not strict loading
         """
-        return {k: v for k, v in super().state_dict(*args, destination, prefix, keep_vars).items() if
-                ("inception_model" not in k and "lpips_vgg" not in k and "lpips_alex" not in k)}
+        return super().load_state_dict(*args, strict=strict)
 
-    def init_from_ckpt(self, path, ignore_keys=list(), stage=None):
+    def state_dict(self, *args, destination=None, prefix="", keep_vars=False):
+        """
+        filter out the non-used keys
+        """
+        return {
+            k: v
+            for k, v in super().state_dict(*args, destination, prefix, keep_vars).items()
+            if ("inception_model" not in k and "lpips_vgg" not in k and "lpips_alex" not in k)
+        }
+
+    def init_from_ckpt(self, path, ignore_keys=list(), stage="transformer"):
         sd = torch.load(path, map_location="cpu")["state_dict"]
         ema_mapping = {}
         new_params = OrderedDict()
-        if stage == "transformer":  # directly use ema encoder and decoder parameter
+        if stage == "transformer":  ### directly use ema encoder and decoder parameter
             if self.use_ema:
                 for k, v in sd.items():
                     if "encoder" in k:
@@ -94,7 +117,7 @@ class VQModel(L.LightningModule):
                             k = k.replace("model_ema.", "")  # load EMA Encoder or Decoder
                             new_k = ema_mapping[k]
                             new_params[new_k] = v
-                        s_name = k.replace('.', '')
+                        s_name = k.replace(".", "")
                         ema_mapping.update({s_name: k})
                         continue
                     if "decoder" in k:
@@ -111,73 +134,76 @@ class VQModel(L.LightningModule):
                         new_params[k] = v
                     elif "decoder" in k:
                         new_params[k] = v
-            missing_keys, unexpected_keys = self.load_state_dict(new_params, strict=False)
-        else:  # simple resume
-            missing_keys, unexpected_keys = self.load_state_dict(sd, strict=False)
-
-        # print(f"{missing_keys=} {unexpected_keys=}")
+        missing_keys, unexpected_keys = self.load_state_dict(new_params, strict=False)  # first stage
         print(f"Restored from {path}")
 
     def encode(self, x):
         h = self.encoder(x)
         (quant, emb_loss, info), loss_breakdown = self.quantize(h, return_loss_breakdown=True)
-        # using token factorization the info is a tuple (each for embedding)
         return quant, emb_loss, info, loss_breakdown
 
     def decode(self, quant):
         dec = self.decoder(quant)
         return dec
 
-    def forward(self, input):
-        quant, codebook_loss, _, loss_break = self.encode(input)
-        dec = self.decode(quant)
-        return dec, codebook_loss, loss_break
+    def decode_code(self, code_b):
+        quant_b = self.quantize.embed_code(code_b)
+        dec = self.decode(quant_b)
+        return dec
 
-    def get_input(self, batch, image_key):
-        x = batch[image_key]
-        if len(x.shape) == 3:  # grayscale case I think? - Kevin
+    def forward(self, input):
+        quant, diff, _, loss_break = self.encode(input)
+        dec = self.decode(quant)
+        return dec, diff, loss_break
+
+    def get_input(self, batch, k):
+        x = batch[k]
+        if len(x.shape) == 3:
             x = x[..., None]
-        x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format)
+        x = x.permute(0, 3, 1, 2).contiguous()
         return x.float()
+
+    def on_train_start(self):
+        """
+        change lr after resuming
+        """
+        if self.resume_lr is not None:
+            opt_gen, opt_disc = self.optimizers()
+            for opt_gen_param_group, opt_disc_param_group in zip(opt_gen.param_groups, opt_disc.param_groups):
+                opt_gen_param_group["lr"] = self.resume_lr
+                opt_disc_param_group["lr"] = self.resume_lr
 
     # fix mulitple optimizer bug
     # refer to https://lightning.ai/docs/pytorch/stable/model/manual_optimization.html
     def training_step(self, batch, batch_idx):
         x = self.get_input(batch, self.image_key)
-        x_reconstructed, codebook_loss, loss_break = self(x)
+        xrec, eloss, loss_break = self(x)
 
-        # generator
-        aeloss, log_dict_ae = self.loss(codebook_loss, loss_break, x, x_reconstructed, 0, self.global_step,
-                                        last_layer=self.get_last_layer(), split="train")
-        self.manual_backward(aeloss / self.training_args.grad_accum_steps, inputs=self.generator_params)  # https://discuss.pytorch.org/t/how-to-implement-gradient-accumulation-for-gan/112751/4
+        opt_gen, opt_disc = self.optimizers()
+        # scheduler_gen, scheduler_disc = self.lr_schedulers()
 
-        # discriminator
-        discloss, log_dict_disc = self.loss(codebook_loss, loss_break, x, x_reconstructed, 1, self.global_step,
-                                            last_layer=self.get_last_layer(), split="train")  # x_reconstructed gets detached, `codebook_loss` and `loss_break` unused
-        self.manual_backward(discloss / self.training_args.grad_accum_steps)
+        ####################
+        # fix global step bug
+        # refer to https://github.com/Lightning-AI/pytorch-lightning/issues/17958
+        opt_disc._on_before_step = lambda: self.trainer.profiler.start("optimizer_step")
+        opt_disc._on_after_step = lambda: self.trainer.profiler.stop("optimizer_step")
+        # opt_gen._on_before_step = lambda: self.trainer.profiler.start("optimizer_step")
+        # opt_gen._on_after_step = lambda: self.trainer.profiler.stop("optimizer_step")
+        ####################
 
-        # TODO: clip grads?
+        # optimize generator
+        aeloss, log_dict_ae = self.loss(eloss, loss_break, x, xrec, 0, self.global_step, last_layer=self.get_last_layer(), split="train")
+        opt_gen.zero_grad()
+        self.manual_backward(aeloss)
+        opt_gen.step()
+        # scheduler_gen.step()
 
-        if (batch_idx + 1) % self.training_args.grad_accum_steps == 0:  # might not update at end of epoch?
-            opt_gen, opt_disc = self.optimizers()
-            scheduler_gen, scheduler_disc = self.lr_schedulers()
-
-            ####################
-            # fix global step bug
-            # refer to https://github.com/Lightning-AI/pytorch-lightning/issues/17958
-            opt_disc._on_before_step = lambda: self.trainer.profiler.start("optimizer_step")
-            opt_disc._on_after_step = lambda: self.trainer.profiler.stop("optimizer_step")
-            # opt_gen._on_before_step = lambda: self.trainer.profiler.start("optimizer_step")
-            # opt_gen._on_after_step = lambda: self.trainer.profiler.stop("optimizer_step")
-            ####################
-
-            opt_gen.step()
-            scheduler_gen.step()
-            opt_gen.zero_grad()
-
-            opt_disc.step()
-            scheduler_disc.step()
-            opt_disc.zero_grad()
+        # optimize discriminator
+        discloss, log_dict_disc = self.loss(eloss, loss_break, x, xrec, 1, self.global_step, last_layer=self.get_last_layer(), split="train")
+        opt_disc.zero_grad()
+        self.manual_backward(discloss)
+        opt_disc.step()
+        # scheduler_disc.step()
 
         self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
         self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
@@ -185,6 +211,22 @@ class VQModel(L.LightningModule):
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
             self.model_ema(self)
+
+    def on_train_epoch_end(self):
+        ### update lr
+        self.lr_annealing()
+
+    def lr_annealing(self):
+        """
+        Perform Lr decay
+        """
+        if self.lr_drop_epoch is not None:
+            current_epoch = self.trainer.current_epoch
+            if (current_epoch + 1) in self.lr_drop_epoch:
+                opt_gen, opt_disc = self.optimizers()
+                for opt_gen_param_group, opt_disc_param_group in zip(opt_gen.param_groups, opt_disc.param_groups):
+                    opt_gen_param_group["lr"] = opt_gen_param_group["lr"] * self.lr_drop_rate
+                    opt_disc_param_group["lr"] = opt_disc_param_group["lr"] * self.lr_drop_rate
 
     def validation_step(self, batch, batch_idx):
         if self.use_ema:
@@ -197,11 +239,9 @@ class VQModel(L.LightningModule):
         x = self.get_input(batch, self.image_key)
         quant, eloss, indices, loss_break = self.encode(x)
         x_rec = self.decode(quant).clamp(-1, 1)
-        aeloss, log_dict_ae = self.loss(eloss, loss_break, x, x_rec, 0, self.global_step,
-                                        last_layer=self.get_last_layer(), split="val" + suffix)
+        aeloss, log_dict_ae = self.loss(eloss, loss_break, x, x_rec, 0, self.global_step, last_layer=self.get_last_layer(), split="val" + suffix)
 
-        discloss, log_dict_disc = self.loss(eloss, loss_break, x, x_rec, 1, self.global_step,
-                                            last_layer=self.get_last_layer(), split="val" + suffix)
+        discloss, log_dict_disc = self.loss(eloss, loss_break, x, x_rec, 1, self.global_step, last_layer=self.get_last_layer(), split="val" + suffix)
 
         self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
         self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
@@ -209,38 +249,37 @@ class VQModel(L.LightningModule):
         return self.log_dict
 
     def configure_optimizers(self):
-        lr = self.training_args.learning_rate
-        adam_betas = (self.training_args.adam_beta_1, self.training_args.adam_beta_2)
-        opt_gen = torch.optim.Adam(self.generator_params,
-                                   lr=lr, betas=adam_betas)
-        opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
-                                    lr=lr, betas=adam_betas)
+        lr = self.learning_rate
+        opt_gen = torch.optim.Adam(
+            list(self.encoder.parameters()) + list(self.decoder.parameters()) + list(self.quantize.parameters()), lr=lr, betas=(0.5, 0.9)
+        )
+        opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9))
 
-        # steps_per_epoch = len(self.trainer.datamodule._train_dataloader()) // self.trainer.world_size
-        steps_per_epoch = len(self.trainer.fit_loop._data_source.instance) // self.trainer.world_size // self.training_args.grad_accum_steps
         if self.trainer.is_global_zero:
-            print(f"{steps_per_epoch=}")
-        warmup_steps = steps_per_epoch * self.training_args.warmup_epochs
-        training_steps = steps_per_epoch * self.trainer.max_epochs
+            print("step_per_epoch: {}".format(len(self.trainer.datamodule._train_dataloader()) // self.trainer.world_size))
 
-        if self.training_args.scheduler_type == "None":
+        step_per_epoch = len(self.trainer.datamodule._train_dataloader()) // self.trainer.world_size
+        warmup_steps = step_per_epoch * self.warmup_epochs
+        training_steps = step_per_epoch * self.trainer.max_epochs
+
+        if self.scheduler_type == "None":
             return ({"optimizer": opt_gen}, {"optimizer": opt_disc})
 
-        if self.training_args.scheduler_type == "linear-warmup":
+        if self.scheduler_type == "linear-warmup":
             scheduler_ae = torch.optim.lr_scheduler.LambdaLR(opt_gen, Scheduler_LinearWarmup(warmup_steps))
             scheduler_disc = torch.optim.lr_scheduler.LambdaLR(opt_disc, Scheduler_LinearWarmup(warmup_steps))
 
-        elif self.training_args.scheduler_type == "linear-warmup_cosine-decay":
-            multipler_min = self.training_args.min_learning_rate / self.training_args.learning_rate
-            scheduler_ae = torch.optim.lr_scheduler.LambdaLR(opt_gen, Scheduler_LinearWarmup_CosineDecay(
-                warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min))
-            scheduler_disc = torch.optim.lr_scheduler.LambdaLR(opt_disc, Scheduler_LinearWarmup_CosineDecay(
-                warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min))
+        elif self.scheduler_type == "linear-warmup_cosine-decay":
+            multipler_min = self.min_learning_rate / self.learning_rate
+            scheduler_ae = torch.optim.lr_scheduler.LambdaLR(
+                opt_gen, Scheduler_LinearWarmup_CosineDecay(warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min)
+            )
+            scheduler_disc = torch.optim.lr_scheduler.LambdaLR(
+                opt_disc, Scheduler_LinearWarmup_CosineDecay(warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min)
+            )
         else:
             raise NotImplementedError()
-
-        return {"optimizer": opt_gen, "lr_scheduler": scheduler_ae}, {"optimizer": opt_disc,
-                                                                      "lr_scheduler": scheduler_disc}
+        return {"optimizer": opt_gen, "lr_scheduler": scheduler_ae}, {"optimizer": opt_disc, "lr_scheduler": scheduler_disc}
 
     def get_last_layer(self):
         return self.decoder.conv_out.weight
@@ -264,5 +303,5 @@ class VQModel(L.LightningModule):
         if not hasattr(self, "colorize"):
             self.register_buffer("colorize", torch.randn(3, x.shape[1], 1, 1).to(x))
         x = F.conv2d(x, weight=self.colorize)
-        x = 2. * (x - x.min()) / (x.max() - x.min()) - 1.
+        x = 2.0 * (x - x.min()) / (x.max() - x.min()) - 1.0
         return x

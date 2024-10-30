@@ -22,3 +22,14 @@ def open_video(file):
 
     container.close()
     return torch.from_numpy(np.stack(video))
+
+
+def rescale_magvit_output(magvit_output):
+    """
+    [-1, 1] -> [0, 255]
+
+    Important: clip to [0, 255]
+    """
+    rescaled_output = (magvit_output.detach().cpu() + 1) * 127.5
+    clipped_output = torch.clamp(rescaled_output, 0, 255).to(dtype=torch.uint8)
+    return clipped_output
