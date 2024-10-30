@@ -1,6 +1,7 @@
+# we ignore type checking for mup and Xformers
 import torch
 from torch import nn
-from xformers.ops import LowerTriangularMask, memory_efficient_attention, unbind
+from xformers.ops import LowerTriangularMask, memory_efficient_attention, unbind  # type: ignore
 import os
 from typing import Union, Type
 

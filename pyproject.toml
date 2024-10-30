@@ -173,6 +173,8 @@ jxlpy = "0.9.5"
 wandb = "^0.18.5"
 av = "13.0.0"
 imageio = {extras = ["ffmpeg"], version = "^2.36.0"}
+prettytable = "^3.11.0"
+types-tqdm = "^4.66.0.20240417"
 
 
 [tool.poetry.group.dev.dependencies]

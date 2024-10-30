@@ -3,7 +3,7 @@ import math
 import os
 import logging
 
-import mup
+import mup  # type: ignore
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,11 +11,12 @@ from einops import rearrange
 from tqdm import tqdm
 from omegaconf import OmegaConf
 
-
 from cyber.models.world import DynamicModel
 from cyber.models.world.dynamic.genie.factorization_utils import FactorizedEmbedding, factorize_labels, factorize_token_ids, unfactorize_token_ids
 from cyber.models.world.dynamic.genie.st_transformer import STTransformerDecoder
 from cyber.utils.module import load_statedict_from_file
+
+from typing import Callable, Union
 
 
 def cosine_schedule(u):
@@ -66,19 +67,19 @@ class STMaskGIT(DynamicModel):
 
         self.config = config
 
-    def forward(
+    def forward_method(
         self,
-        x: torch.Tensor,
+        inputs: torch.Tensor,
         frames_to_generate: int,
         return_logits: int = False,
         maskgit_steps: int = 1,
         temperature: float = 0.0,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
-        Generates `frames_to_generate` frames given `x`.
+        Generates `frames_to_generate` frames given `input`.
 
         Args:
-            x(torch.Tensor[torch.long]): Input tokens, size (B, T' * H * W) where T' = T - frames_to_generate.
+            input(torch.Tensor[torch.long]): Input tokens, size (B, T' * H * W) where T' = T - frames_to_generate.
             frames_to_generate: Number of frames to generate.
             return_logits: If True, will return the logits for each generated frame.
             maskgit_steps: Number of MaskGIT-style inference steps to take.
@@ -86,11 +87,11 @@ class STMaskGIT(DynamicModel):
 
         Returns: (predicted_tokens, factored_logits) if `return_logits` else predicted_tokens
         """
-        assert x.dtype is torch.long
+        assert inputs.dtype is torch.long
 
-        inputs_THW = rearrange(x.clone(), "b (t h w) -> b t h w", h=self.h, w=self.w)
+        inputs_THW = rearrange(inputs.clone(), "b (t h w) -> b t h w", h=self.h, w=self.w)
         inputs_masked_THW = torch.cat(
-            [inputs_THW, torch.full((x.size(0), frames_to_generate, self.h, self.w), self.mask_token_id, dtype=torch.long, device=x.device)], dim=1
+            [inputs_THW, torch.full((inputs.size(0), frames_to_generate, self.h, self.w), self.mask_token_id, dtype=torch.long, device=inputs.device)], dim=1
         )
 
         all_factored_logits = []
@@ -328,11 +329,11 @@ class STMaskGIT(DynamicModel):
         logging.info(f"Restored pretrained model from {path}")
         return model
 
-    def get_train_collator(self):
+    def get_train_collator(self) -> Callable:
         return get_maskgit_collator(self.config)
 
 
-def get_maskgit_collator(config):
+def get_maskgit_collator(config) -> Callable:
     mask_token_id = config.image_vocab_size
     h = w = math.isqrt(config.S)
 

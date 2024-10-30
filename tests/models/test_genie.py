@@ -25,7 +25,7 @@ class TestGenie:
         self.model.train()
         input_copy = self.input.clone().detach()
         input_copy[0,3000:] = 262144
-        loss = self.model.compute_training_loss(input_copy, self.input)
+        loss = self.model(input_copy, self.input)
         assert loss.item() == pytest.approx(12.558472633361816, rel=sys.float_info.epsilon*2)
     
     def test_inference(self):
