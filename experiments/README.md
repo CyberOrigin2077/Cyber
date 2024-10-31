@@ -35,10 +35,17 @@ Make sure to install the jupyter before running the notebook. `pip install jupyt
 bash ../scripts/download_dataset.sh
 ```
 ### Model Training & Evaluation
-```
-python models/world/train_world.py --train-config-path configs/models/world/world_model.yaml --model-config-path configs/models/world/MagVIT_Genie.yaml
+The following steps will guide you through training the a GENIE dynamic model on the CyberOrigin dataset.
+
+**Local Training**</br>
+To train on your local machine using a single GPU, run:
+```bash
+python models/world/train_dynamic.py --data_dir data/cyber_pipette/data
 ```
 *Note: The model will train on the default configuration provided.*
+
+**Training on Sagemaker**</br>
+Using AWS Sagemaker for training allows you to leverage multiple GPUs on the cloud to speed up training. To train on Sagemaker, follow the instructions in the [Sagemaker README](sagemaker/README.md).
 
 ## Model configuration and hyperparameters
 ### GENIE

@@ -19,7 +19,7 @@ repos:
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: pytest tests/
+        entry: python -m pytest -v tests/
         language: system
         types: [python]
         stages: [pre-push]

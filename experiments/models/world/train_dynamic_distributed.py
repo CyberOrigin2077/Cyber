@@ -155,9 +155,11 @@ def main():
                 print_with_tqdm(pbar, "Validating the model")
                 val_loss = validate(model.module, val_dataloader, val_steps=args.validate_steps)
                 print_with_tqdm(pbar, f"Epoch {epoch + 1} Step {step} Validation Loss: {val_loss:.4f}")
+                eval_losses = accelerator.gather_for_metrics(loss)
+                eval_loss_across_processes = sum(eval_losses) / len(eval_losses)
                 accelerator.log(
                     {
-                        "validation_loss": val_loss,
+                        "validation_loss": eval_loss_across_processes,
                     },
                     step=completed_steps,
                 )
