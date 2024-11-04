@@ -13,13 +13,14 @@ repos:
     rev: v1.12.1
     hooks:
       - id: mypy
+        additional_dependencies: [types-requests==2.32.0.20241016]
         stages: [pre-commit]
 
 -   repo: local
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: python -m pytest -v tests/
+        entry: pytest tests/
         language: system
         types: [python]
         stages: [pre-push]

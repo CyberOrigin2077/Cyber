@@ -67,6 +67,9 @@ class STMaskGIT(DynamicModel):
 
         self.config = config
 
+        # initialize weights
+        self.init_weights()
+
     def forward_method(
         self,
         inputs: torch.Tensor,
@@ -158,7 +161,7 @@ class STMaskGIT(DynamicModel):
         logits_CTHW = self.compute_logits(prompt_THW)
         logits_CHW = logits_CTHW[:, :, out_t]
         orig_logits_CHW = logits_CHW.clone()  # Return these original logits, not logits after partially sampling.
-        for step in tqdm(range(maskgit_steps)):
+        for step in range(maskgit_steps):
             # Perform a single maskgit step (cosine schedule), updating unmasked in-place
             if step > 0:  # recompute logits with updated prompt
                 logits_CHW = self.compute_logits(prompt_THW)[:, :, out_t]

@@ -80,7 +80,7 @@ Please refer to the help message for hyperparameter descriptions
 python models/world/train.py -h
 ```
 
-### Magvit2
+### Open-MAGVIT2
 Code is modified from [1XGPT](https://github.com/1x-technologies/1xgpt) and [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2) but removed unnecessary files and code.
 
 **Pretrained checkpoint**</br>
@@ -112,3 +112,21 @@ python experiments/compress_video.py --root_path /path/to/root/folder --ckpt_pat
 ```
 
 ```videos.bin``` ```metadata.json``` ```segment_ids.bin``` will be generated in ```output_path/date_folder/compressed```, you can decompress it and check the reconstructed video.
+
+**Model training**
+
+```
+image-folder
+    ├── image_1.png
+    ├── image_2.png
+    ├── image_3.png
+    ├── image_4.png
+    ├── ...
+```
+
+The following command instructs you to train the Open-Magvit2 tokenizer on your customized image dataset, please ensure your data is the same structure as above.
+```
+python experiments/models/world/train_openmagvit2.py --config experiments/configs/models/world/openmagvit2.yaml --data_dir path/to/image/folder --output_dir path/to/output/folder
+```
+
+Please refer to [openmagvit2.yaml](configs/models/world/openmagvit2.yaml) for more hyperparameter descriptions.

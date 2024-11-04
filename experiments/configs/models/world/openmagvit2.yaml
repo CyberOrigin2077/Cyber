@@ -1,40 +1,36 @@
-seed_everything: true
+# model config for OpenMagVIT2
+ddconfig:
+  double_z: False  # Whether to use a double latent space (True/False)
+  z_channels: 18   # Number of channels in the latent space
+  resolution: 128   # Input resolution of the images (height and width)
+  in_channels: 3    # Number of input channels (e.g., RGB images have 3 channels)
+  out_ch: 3         # Number of output channels (should match in_channels for reconstruction)
+  ch: 128           # Base channel size for the model
+  ch_mult: [1,1,2,2,4]  # Channel multipliers for each downsampling layer; num_down = len(ch_mult) - 1
+  num_res_blocks: 4 # Number of residual blocks in the model
 
-model:
-  class_path: cyber.models.world.autoencoder.VQModel
+lossconfig:
+  class_path: cyber.models.world.autoencoder.magvit2.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
+    # Path to the loss function class used for training
   init_args:
-    ddconfig:
-      double_z: False
-      z_channels: 18
-      resolution: 128
-      in_channels: 3
-      out_ch: 3
-      ch: 128
-      ch_mult: [1,1,2,2,4]  # num_down = len(ch_mult)-1
-      num_res_blocks: 4
+    disc_conditional: False   # Whether the discriminator is conditional (True/False)
+    disc_in_channels: 3       # Number of input channels for the discriminator
+    disc_start: 0             # Epoch to start training the discriminator
+    disc_weight: 0.8          # Weight for the discriminator loss in total loss calculation
+    gen_loss_weight: 0.1      # Weight for the generator loss in total loss calculation
+    lecam_loss_weight: 0.05   # Weight for the LECAM loss component
+    codebook_weight: 0.1      # Weight for codebook loss
+    commit_weight: 0.25       # Weight for commitment loss in VQ-VAE
+    codebook_enlarge_ratio: 0 # Ratio to enlarge the codebook
+    codebook_enlarge_steps: 2000 # Steps to enlarge the codebook
 
-    lossconfig:
-      class_path: cyber.models.world.autoencoder.magvit2.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
-      params:
-        disc_conditional: False
-        disc_in_channels: 3
-        disc_start: 0 # from 0 epoch
-        disc_weight: 0.8
-        gen_loss_weight: 0.1
-        lecam_loss_weight: 0.05
-        codebook_weight: 0.1
-        commit_weight: 0.25
-        codebook_enlarge_ratio: 0
-        codebook_enlarge_steps: 2000
-
-    n_embed: 262144
-    embed_dim: 18
-    learning_rate: 1e-4
-    sample_minimization_weight: 1.0
-    batch_maximization_weight: 1.0
-    scheduler_type: "None"
-    use_ema: True
-    resume_lr:
-    lr_drop_epoch: [200, 250]
-
-ckpt_path: null # to resume
+# training config
+n_embed: 262144                 # Number of embeddings in the codebook
+embed_dim: 18                    # Dimensionality of each embedding vector
+learning_rate: 1e-4              # Learning rate for the optimizer
+sample_minimization_weight: 1.0   # Weight for sample minimization loss
+batch_maximization_weight: 1.0    # Weight for batch maximization loss
+scheduler_type: "None"           # Type of learning rate scheduler ("None", "linear-warmup", "linear-warmup_cosine-decay")
+use_ema: True                     # Whether to use Exponential Moving Average (EMA) for model weights
+resume_lr:
+lr_drop_epoch: [200, 250]        # Epochs at which to drop the learning rate during training

@@ -22,3 +22,42 @@ class DynamicModel(CyberModule):
         torch.Tensor: generated frames
         """
         pass
+
+
+class AutoEncoder(CyberModule):
+    """
+    template for dynamic models
+    """
+
+    @abstractmethod
+    def encode(self, *args, **kwargs):
+        """
+        prototype for the encoder.
+
+        Args:
+        TODO
+
+        Returns:
+
+        """
+        pass
+
+    @abstractmethod
+    def decode(self, *args, **kwargs):
+        """
+        prototype for the decoder.
+
+        Args:
+        TODO
+
+        Returns:
+
+        """
+        pass
+
+    def forward_method(self, *args, **kwargs):
+        """
+        a forward pass through the autoencoder is the same as encoding.
+
+        """
+        return self.encode(*args, **kwargs)

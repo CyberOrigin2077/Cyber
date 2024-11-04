@@ -13,7 +13,6 @@ class TestGenie:
         reseed_everything()
         genie_conf = OmegaConf.load("experiments/configs/models/world/genie.yaml")
         cls.model = STMaskGIT(genie_conf)  # 35M model
-        cls.model.init_weights() # deterministic initialization due to fixed seed
         cls.model.to("cuda")
         cls.input = torch.load("tests/fixtures/tensors/tokens.pth").to("cuda")
 

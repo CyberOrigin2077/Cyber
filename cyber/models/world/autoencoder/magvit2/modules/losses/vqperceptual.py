@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from magvit2.modules.losses.lpips import LPIPS
-from magvit2.modules.discriminator.model import NLayerDiscriminator, weights_init
+from cyber.models.world.autoencoder.magvit2.modules.losses.lpips import LPIPS
+from cyber.models.world.autoencoder.magvit2.modules.discriminator.model import NLayerDiscriminator, weights_init
 
 
 class DummyLoss(nn.Module):

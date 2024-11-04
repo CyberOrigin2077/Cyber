@@ -1,1 +1,1 @@
-from cyber.models.world.worldmodel import DynamicModel as DynamicModel
+from cyber.models.world.worldmodel import DynamicModel as DynamicModel, AutoEncoder as AutoEncoder

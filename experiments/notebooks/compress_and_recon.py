@@ -11,15 +11,13 @@ import numpy as np
 from PIL import Image
 from cyber.models.world.autoencoder import VQModel
 import argparse
-from einops import rearrange
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def load_vqgan_new(config, ckpt_path=None, is_gumbel=False):
-    model = VQModel(config.model.init_args)
-    # model = VQModel.from_config(config)
+    model = VQModel(config)
     if ckpt_path is not None:
         sd = torch.load(ckpt_path, map_location="cpu")["state_dict"]
         _, _ = model.load_state_dict(sd, strict=False)
@@ -73,10 +71,7 @@ def process_video(config_file, video_path, ckpt_path, save_dir, **kwargs):
 
             frame_tensor = transform(frame_rgb).unsqueeze(0).to(DEVICE)
             frame_tensor = frame_tensor * 2 - 1
-
-            quant, _, _, _ = model.encode(frame_tensor)
-
-            tokens = model.quantize.bits_to_indices(quant.permute(0, 2, 3, 1) > 0)
+            tokens = model.encode(frame_tensor)
             mmap_tokens[frame_idx] = tokens.cpu().numpy().squeeze()
 
             # reconstructed = model.decode(quant)
@@ -108,11 +103,7 @@ def reconstruct_video(config_file, tokens_path, ckpt_path, save_dir, fps, **kwar
     with torch.no_grad():
         for frame_idx in tqdm(range(num_frames), desc="Reconstructing frames"):
             frame_tokens = torch.from_numpy(tokens[frame_idx : frame_idx + 1]).to(dtype=torch.int64, device=DEVICE)
-
-            bhwc = (frame_tokens.shape[0], frame_tokens.shape[1], frame_tokens.shape[2], model.quantize.codebook_dim)
-            quant = model.quantize.get_codebook_entry(rearrange(frame_tokens, "b h w -> b (h w)"), bhwc=bhwc).flip(1)
-
-            reconstructed = model.decode(quant)
+            reconstructed = model.decode(frame_tokens)
             reconstructed_frames.append(reconstructed)
             reconstructed_image = custom_to_pil(reconstructed[0])
             reconstructed_frame = cv2.cvtColor(np.array(reconstructed_image), cv2.COLOR_RGB2BGR)
