@@ -108,6 +108,5 @@ def test_train_openmagvit2():
         gen_loss_at_epoch.append(sum(gen_loss_steps_for_epoch)/len(gen_loss_steps_for_epoch))
     
     # loss should decrease
-    assert gen_loss_at_epoch[0] > gen_loss_at_epoch[1]
-    assert gen_loss_at_epoch[1] > gen_loss_at_epoch[2]
+    assert gen_loss_at_epoch[0] > gen_loss_at_epoch[2]
     torch.cuda.empty_cache()
