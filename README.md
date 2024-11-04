@@ -104,7 +104,7 @@ For more details, please refer to the [Hugging Face documentation](https://huggi
 
 ## 🕹️ Usage
 
-Please refer to the [experiments](experiments/README.md) for more details on data downloading and model training.
+Please refer to the [experiments](docs/experiments/world_model.md) for more details on data downloading and model training.
 
 ---
 

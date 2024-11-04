@@ -1,24 +1,32 @@
 site_name: CYBER
 site_description: "A General Robotic Operation System for Embodied AI"
 
-repo_url: https://github.com/CyberOrigin2077/Cyber
-repo_name: CyberOrigin2077/Cyber
+repo_url: ${REPO_URL}
+repo_name: ${REPO_NAME}
+
+remote_branch: gh-pages
 
 theme:
     icon:
         repo: fontawesome/brands/github
-    name: "material"
+    name: material
+    favicon: imgs/logo_dark.png
+    logo: imgs/logo_with_name_dark.png
     palette:
+        - media: "(prefers-color-scheme)"
+          toggle:
+              icon: material/brightness-auto
+              name: Switch to system preference
         - media: "(prefers-color-scheme: light)"
-          primary: "blue"
-          accent: "grey"
+          primary: "indigo"
+          accent: "pink"
           scheme: default
           toggle:
               icon: material/toggle-switch-off-outline
               name: Switch to dark mode
         - media: "(prefers-color-scheme: dark)"
-          primary: "blue"
-          accent: "white"
+          primary: "deep-purple"
+          accent: "cyan"
           scheme: slate
           toggle:
               icon: material/toggle-switch
@@ -34,8 +42,8 @@ markdown_extensions:
     - admonition
     - pymdownx.details
     - pymdownx.emoji:
-          emoji_index: !!python/name:materialx.emoji.twemoji
-          emoji_generator: !!python/name:materialx.emoji.to_svg
+          emoji_index: !!python/name:material.extensions.emoji.twemoji
+          emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
     - Home: index.md
@@ -48,7 +56,7 @@ nav:
           - Control Model: tutorial/control.md
     - Setup: setup.md
     - Hugging Face Integration: huggingface.md
-    - Usage: usage.md
-    - File Structure: file-structure.md
-    - References: references.md
+    - Usage: experiments/world_model.md
+    - File Structure: file_structure.md
+    - References: reference.md
     - Contact: contact.md
