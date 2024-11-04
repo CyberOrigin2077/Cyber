@@ -72,7 +72,9 @@ class RawTokenDataset(TorchDataset):
             # ! NOTE that we need to filter interupts to avoid slicing across different memmaps
             # Assuming `segment_ids` is monotonically increasing, a sequence is interrupted
             # if the first and last frames have different segment ids.
-            if not (self.segment_ids[start_ind] != self.segment_ids[start_ind + self.video_len]):
+            if (self.segment_ids[start_ind] == self.segment_ids[start_ind + self.video_len]) and (
+                self.segment_ids.indmap[start_ind] == self.segment_ids.indmap[start_ind + self.video_len]
+            ):
                 self.valid_start_inds.append(start_ind)
 
         if filter_overlaps:
