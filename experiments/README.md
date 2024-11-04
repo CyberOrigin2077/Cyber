@@ -1,11 +1,14 @@
 # Cyber
 
 **Cyber** represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed **CyberOrigin Dataset**, pushing the boundaries of artificial intelligence and machine learning.
+**Cyber** represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed **CyberOrigin Dataset**, pushing the boundaries of artificial intelligence and machine learning.
 
+Follow this document to train the models using our readily-available data or adapt your data for training.
 Follow this document to train the models using our readily-available data or adapt your data for training.
 
 ## CyberOrigin Dataset
 Our data includes information from home services, the logistics industry, and laboratory scenarios.
+For more details, please refer to our [Offical Data Website](https://cyberorigin2077.github.io/).
 For more details, please refer to our [Offical Data Website](https://cyberorigin2077.github.io/).
 
 * **Format & Description**</br>
@@ -29,6 +32,7 @@ You can visualize the dataset using this [notebook](https://github.com/CyberOrig
 Make sure to install the jupyter before running the notebook. `pip install jupyter notebook`
 
 
+## Quick Start for CyberOrigin Dataset
 ## Quick Start for CyberOrigin Dataset
 ### Download the Dataset
 ```bash
