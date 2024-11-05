@@ -1,40 +1,30 @@
 site_name: CYBER
 site_description: "A General Robotic Operation System for Embodied AI"
 
-repo_url: ${REPO_URL}
-repo_name: ${REPO_NAME}
-
-remote_branch: gh-pages
+repo_url: https://github.com/CyberOrigin2077/Cyber
+repo_name: CyberOrigin2077/Cyber
 
 theme:
     icon:
         repo: fontawesome/brands/github
-    name: material
-    favicon: imgs/logo_dark.png
-    logo: imgs/logo_with_name_dark.png
+    name: "material"
     palette:
-        - media: "(prefers-color-scheme)"
-          toggle:
-              icon: material/brightness-auto
-              name: Switch to system preference
         - media: "(prefers-color-scheme: light)"
-          primary: "indigo"
-          accent: "pink"
+          primary: "blue"
+          accent: "grey"
           scheme: default
           toggle:
               icon: material/toggle-switch-off-outline
               name: Switch to dark mode
         - media: "(prefers-color-scheme: dark)"
-          primary: "deep-purple"
-          accent: "cyan"
+          primary: "blue"
+          accent: "white"
           scheme: slate
           toggle:
               icon: material/toggle-switch
               name: Switch to light mode
 
 plugins:
-    - search
-    - mkdocstrings
     - search
     - mkdocstrings
 
@@ -44,8 +34,8 @@ markdown_extensions:
     - admonition
     - pymdownx.details
     - pymdownx.emoji:
-          emoji_index: !!python/name:material.extensions.emoji.twemoji
-          emoji_generator: !!python/name:material.extensions.emoji.to_svg
+          emoji_index: !!python/name:materialx.emoji.twemoji
+          emoji_generator: !!python/name:materialx.emoji.to_svg
 
 nav:
     - Home: index.md
@@ -58,7 +48,7 @@ nav:
           - Control Model: tutorial/control.md
     - Setup: setup.md
     - Hugging Face Integration: huggingface.md
-    - Usage: experiments/world_model.md
-    - File Structure: file_structure.md
-    - References: reference.md
+    - Usage: usage.md
+    - File Structure: file-structure.md
+    - References: references.md
     - Contact: contact.md

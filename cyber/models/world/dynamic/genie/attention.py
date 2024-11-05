@@ -1,9 +1,8 @@
-# we ignore type checking for mup and Xformers
 import torch
 from torch import nn
-from xformers.ops import LowerTriangularMask, memory_efficient_attention, unbind  # type: ignore
+from xformers.ops import LowerTriangularMask, memory_efficient_attention, unbind
 import os
-from typing import Union, Type
+
 
 XFORMERS_DISABLED = os.environ.get("XFORMERS_DISABLED", "false").lower() == "true"
 
@@ -84,8 +83,6 @@ class MemoryEfficientAttention(BasicSelfAttention):
         x = self.proj(x)
         return x
 
-
-SelfAttention: Union[Type[BasicSelfAttention], Type[MemoryEfficientAttention]]
 
 if XFORMERS_DISABLED:
     SelfAttention = BasicSelfAttention

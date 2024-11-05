@@ -11,7 +11,7 @@ def get_obj_from_str(string, reload=False):
 
 
 def instantiate_from_config(config: OmegaConf):
-    """
+    '''
     Instantiate an object from an OmegaConf configuration.
 
     Args:
@@ -19,10 +19,10 @@ def instantiate_from_config(config: OmegaConf):
 
     Returns:
         object: the instantiated object
-    """
+    '''
     if "class_path" not in config:
         raise KeyError("Expected key `class_path` to instantiate.")
-    return get_obj_from_str(config["class_path"])(**config.get("init_args"))
+    return get_obj_from_str(config["class_path"])(config.get("init_args", dict()))  # noqa: C408
 
 
 def get_function_from_str(string):

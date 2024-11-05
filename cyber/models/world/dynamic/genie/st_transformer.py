@@ -1,7 +1,7 @@
 from torch import nn, Tensor
 from einops import rearrange
 
-from cyber.models.world.dynamic.genie.attention import SelfAttention
+from genie.attention import SelfAttention
 
 
 class Mlp(nn.Module):

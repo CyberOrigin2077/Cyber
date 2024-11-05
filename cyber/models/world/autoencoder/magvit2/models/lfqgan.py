@@ -1,70 +1,65 @@
+"""
+Modification of Open-MAGVIT2 code, including adding gradient accumulation during training, using VQConfig,
+removing hardcoded arguments and removing unnecessary code.
+"""
+
 import torch
 import torch.nn.functional as F
-import torchvision.transforms.transforms as visionTransforms
-from einops import rearrange
+import lightning as L
 
-from cyber.config.utils import instantiate_from_config
-from contextlib import contextmanager
 from collections import OrderedDict
-from typing import Callable
+from contextlib import contextmanager
 
 
-from cyber.models.world.autoencoder.magvit2.modules.diffusionmodules.improved_model import Encoder, Decoder
-from cyber.models.world.autoencoder.magvit2.modules.losses.vqperceptual import VQLPIPSWithDiscriminator
-from cyber.models.world.autoencoder.magvit2.modules.vqvae.lookup_free_quantize import LFQ
-from cyber.models.world.autoencoder.magvit2.modules.scheduler.lr_scheduler import Scheduler_LinearWarmup, Scheduler_LinearWarmup_CosineDecay
-from cyber.models.world.autoencoder.magvit2.modules.ema import LitEma
-
-from cyber.models.world import AutoEncoder
-
-import PIL
-import logging
+from magvit2.config import VQConfig
+from magvit2.modules.diffusionmodules.improved_model import Encoder, Decoder
+from magvit2.modules.losses.vqperceptual import VQLPIPSWithDiscriminator
+from magvit2.modules.vqvae.lookup_free_quantize import LFQ
+from magvit2.modules.scheduler.lr_scheduler import Scheduler_LinearWarmup, Scheduler_LinearWarmup_CosineDecay
+from magvit2.modules.ema import LitEma
 
 
-class VQModel(AutoEncoder):
-    def __init__(self, config):
-        """
-        Args:
-            config: Configuration object containing all model parameters
-        """
+class VQModel(L.LightningModule):
+    def __init__(
+        self,
+        config: VQConfig,
+        training_args=None,
+        ckpt_path=None,
+        ignore_keys=[],
+        image_key="image",
+        colorize_nlabels=None,
+        monitor=None,
+        use_ema=True,
+        stage=None,
+    ):
         super().__init__()
-
-        ddconfig = config.get("ddconfig", {})
-        lossconfig = config.get("lossconfig", {})
-
-        self.encoder = Encoder(**ddconfig)
-        self.decoder = Decoder(**ddconfig)
-        self.loss = instantiate_from_config(lossconfig)
-
-        # Quantize
-        self.quantize = LFQ(
-            dim=config.embed_dim,
-            codebook_size=config.n_embed,
-            sample_minimization_weight=config.sample_minimization_weight,
-            batch_maximization_weight=config.batch_maximization_weight,
-            token_factorization=config.get("token_factorization", False),
-            factorized_bits=config.get("factorized_bits", [9, 9]),
-        )
-
-        # Colorize
-        if config.get("colorize_nlabels") is not None:
-            assert isinstance(config.colorize_nlabels, int)
-            self.register_buffer("colorize", torch.randn(3, config.colorize_nlabels, 1, 1))
-
-        if config.get("monitor") is not None:
-            self.monitor = config.monitor
-
-        # ema
-        self.use_ema = config.get("use_ema", False)
-        stage = config.get("stage", None)
-        if self.use_ema and stage is None:  # no need to construct EMA when training Transformer
-            self.model_ema = LitEma(self)
-
-        # load ckpt
-        ckpt_path = config.get("ckpt_path")
+        self.training_args = training_args
+        self.image_key = image_key
+        self.encoder = Encoder(config)
+        self.decoder = Decoder(config)
+        self.loss = VQLPIPSWithDiscriminator(config)
+        self.quantize = LFQ(config)
+        self.use_ema = use_ema
+        self.stage = stage
         if ckpt_path is not None:
-            self.init_from_ckpt(ckpt_path, ignore_keys=config.get("ignore_keys", []), stage=stage)
-        self.global_step = 0
+            self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys, stage=stage)
+        self.image_key = image_key
+        if colorize_nlabels is not None:
+            assert isinstance(colorize_nlabels, int)
+            self.register_buffer("colorize", torch.randn(3, colorize_nlabels, 1, 1))
+        if monitor is not None:
+            self.monitor = monitor
+
+        self.generator_params = list(self.encoder.parameters()) + \
+            list(self.decoder.parameters()) + \
+            list(self.quantize.parameters())
+
+        if self.use_ema and stage is None:  # no need to construct ema when training transformer
+            self.model_ema = LitEma(self)  # Note: this means EMA weights are overriden after `init_from_ckpt`.
+
+        self.automatic_optimization = False
+
+        self.strict_loading = False
 
     @contextmanager
     def ema_scope(self, context=None):
@@ -81,27 +76,18 @@ class VQModel(AutoEncoder):
                 if context is not None:
                     print(f"{context}: Restored training weights")
 
-    def load_state_dict(self, *args, strict=False):
+    def state_dict(self, *args, destination=None, prefix='', keep_vars=False):
         """
-        Resume not strict loading
+        save the state_dict and filter out the
         """
-        return super().load_state_dict(*args, strict=strict)
+        return {k: v for k, v in super().state_dict(*args, destination, prefix, keep_vars).items() if
+                ("inception_model" not in k and "lpips_vgg" not in k and "lpips_alex" not in k)}
 
-    def state_dict(self, *args, destination=None, prefix="", keep_vars=False):
-        """
-        filter out the non-used keys
-        """
-        return {
-            k: v
-            for k, v in super().state_dict(*args, destination, prefix, keep_vars).items()
-            if ("inception_model" not in k and "lpips_vgg" not in k and "lpips_alex" not in k)
-        }
-
-    def init_from_ckpt(self, path, ignore_keys=list(), stage="transformer"):
+    def init_from_ckpt(self, path, ignore_keys=list(), stage=None):
         sd = torch.load(path, map_location="cpu")["state_dict"]
         ema_mapping = {}
         new_params = OrderedDict()
-        if stage == "transformer":  ### directly use ema encoder and decoder parameter
+        if stage == "transformer":  # directly use ema encoder and decoder parameter
             if self.use_ema:
                 for k, v in sd.items():
                     if "encoder" in k:
@@ -109,7 +95,7 @@ class VQModel(AutoEncoder):
                             k = k.replace("model_ema.", "")  # load EMA Encoder or Decoder
                             new_k = ema_mapping[k]
                             new_params[new_k] = v
-                        s_name = k.replace(".", "")
+                        s_name = k.replace('.', '')
                         ema_mapping.update({s_name: k})
                         continue
                     if "decoder" in k:
@@ -126,144 +112,136 @@ class VQModel(AutoEncoder):
                         new_params[k] = v
                     elif "decoder" in k:
                         new_params[k] = v
-        missing_keys, unexpected_keys = self.load_state_dict(new_params, strict=False)  # first stage
+            missing_keys, unexpected_keys = self.load_state_dict(new_params, strict=False)
+        else:  # simple resume
+            missing_keys, unexpected_keys = self.load_state_dict(sd, strict=False)
+
+        # print(f"{missing_keys=} {unexpected_keys=}")
         print(f"Restored from {path}")
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Encode the input tensor to latent code from the codebook.
-        Downsampling factor is 2^(len(ch_mult)-1).
-
-        Args:
-            x(torch.Tensor): input image batch shape(B, 3, H, W)
-
-        Returns:
-            torch.Tensor: quantized latent code shape(B, H/Ds, W/Ds) Ds: downsampling factor
-        """
-        assert len(x.shape) == 4
-        assert x.shape[1] == 3
-        # check if the H and W are divisible by 2^(len(ch_mult)-1)
-        h, w = x.shape[2:]
-        Ds = int(2 ** (self.encoder.num_blocks - 1))
-        if not (h % Ds == 0 and w % Ds == 0):
-            logging.warning(
-                "Input size is not divisible by 2^(len(ch_mult)-1),\
-                            tokenization will work but sizes will not match"
-            )
-        quant, _, _, _ = self._encode(x)
-        tokens = self.quantize.bits_to_indices(quant.permute(0, 2, 3, 1) > 0)
-        return tokens
-
-    def decode(self, tokens: torch.Tensor) -> torch.Tensor:
-        """
-        Decode the latent code to the image.
-
-        Args:
-            tokens(torch.Tensor): quantized latent code shape(B, H, W)
-
-        Returns:
-            torch.Tensor: reconstructed image shape(B, 3, H*Ds, W*Ds) Ds: downsampling factor
-        """
-        assert len(tokens.shape) == 3
-        bhwc = (tokens.shape[0], tokens.shape[1], tokens.shape[2], self.quantize.codebook_dim)
-        quant = self.quantize.get_codebook_entry(rearrange(tokens, "b h w -> b (h w)"), bhwc=bhwc).flip(1)
-        reconstructed = self.decoder(quant)
-        return reconstructed
-
-    def _encode(self, x):
+    def encode(self, x):
         h = self.encoder(x)
         (quant, emb_loss, info), loss_breakdown = self.quantize(h, return_loss_breakdown=True)
+        # using token factorization the info is a tuple (each for embedding)
         return quant, emb_loss, info, loss_breakdown
 
-    def decode_code(self, code_b):
-        quant_b = self.quantize.embed_code(code_b)
-        dec = self.decoder(quant_b)
+    def decode(self, quant):
+        dec = self.decoder(quant)
         return dec
 
-    def encode_and_decode(self, input):
-        quant, diff, _, loss_break = self._encode(input)
-        dec = self.decoder(quant)
-        return dec, diff, loss_break
+    def forward(self, input):
+        quant, codebook_loss, _, loss_break = self.encode(input)
+        dec = self.decode(quant)
+        return dec, codebook_loss, loss_break
 
-    def get_input(self, batch, k):
-        x = batch[k]
-        if len(x.shape) == 3:
+    def get_input(self, batch, image_key):
+        x = batch[image_key]
+        if len(x.shape) == 3:  # grayscale case I think? - Kevin
             x = x[..., None]
-        x = x.permute(0, 3, 1, 2).contiguous()
+        x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format)
         return x.float()
 
-    def compute_training_loss(self, images: torch.Tensor, **kwargs):
-        """
-        Compute the training loss for the the VQGAN model.
-        Returns the generator loss and discriminator loss
-        Args:
-            images: torch.Tensor: input images shape(B, 3, H, W)
+    # fix mulitple optimizer bug
+    # refer to https://lightning.ai/docs/pytorch/stable/model/manual_optimization.html
+    def training_step(self, batch, batch_idx):
+        x = self.get_input(batch, self.image_key)
+        x_reconstructed, codebook_loss, loss_break = self(x)
 
-        Returns:
-            tuple(torch.Tensor, torch.Tensor): (generator loss, discriminator loss)
-        """
-        x = images
-        xrec, eloss, loss_break = self.encode_and_decode(x)
+        # generator
+        aeloss, log_dict_ae = self.loss(codebook_loss, loss_break, x, x_reconstructed, 0, self.global_step,
+                                        last_layer=self.get_last_layer(), split="train")
+        self.manual_backward(aeloss / self.training_args.grad_accum_steps, inputs=self.generator_params)  # https://discuss.pytorch.org/t/how-to-implement-gradient-accumulation-for-gan/112751/4
 
-        aeloss, _ = self.loss(eloss, loss_break, x, xrec, 0, self.global_step, last_layer=self.get_last_layer(), split="train")
-        discloss, _ = self.loss(eloss, loss_break, x, xrec, 1, self.global_step, last_layer=self.get_last_layer(), split="train")
+        # discriminator
+        discloss, log_dict_disc = self.loss(codebook_loss, loss_break, x, x_reconstructed, 1, self.global_step,
+                                            last_layer=self.get_last_layer(), split="train")  # x_reconstructed gets detached, `codebook_loss` and `loss_break` unused
+        self.manual_backward(discloss / self.training_args.grad_accum_steps)
 
-        return aeloss, discloss
+        # TODO: clip grads?
 
-    def get_train_collator(self, overide_transform: visionTransforms.Compose = None, *args, **kwargs) -> Callable:
-        if overide_transform is not None:
+        if (batch_idx + 1) % self.training_args.grad_accum_steps == 0:  # might not update at end of epoch?
+            opt_gen, opt_disc = self.optimizers()
+            scheduler_gen, scheduler_disc = self.lr_schedulers()
 
-            def collate_fn(images: PIL.Image.Image) -> torch.Tensor:
-                images = [overide_transform(image) for image in images]
-                return {"images", torch.stack(images)}
+            ####################
+            # fix global step bug
+            # refer to https://github.com/Lightning-AI/pytorch-lightning/issues/17958
+            opt_disc._on_before_step = lambda: self.trainer.profiler.start("optimizer_step")
+            opt_disc._on_after_step = lambda: self.trainer.profiler.stop("optimizer_step")
+            # opt_gen._on_before_step = lambda: self.trainer.profiler.start("optimizer_step")
+            # opt_gen._on_after_step = lambda: self.trainer.profiler.stop("optimizer_step")
+            ####################
+
+            opt_gen.step()
+            scheduler_gen.step()
+            opt_gen.zero_grad()
+
+            opt_disc.step()
+            scheduler_disc.step()
+            opt_disc.zero_grad()
+
+        self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+        self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+
+    def on_train_batch_end(self, *args, **kwargs):
+        if self.use_ema:
+            self.model_ema(self)
+
+    def validation_step(self, batch, batch_idx):
+        if self.use_ema:
+            with self.ema_scope():
+                log_dict_ema = self._validation_step(batch, batch_idx, suffix="_ema")
         else:
-            T = visionTransforms.Compose(
-                [
-                    visionTransforms.Resize((256, 256)),
-                    visionTransforms.RandomHorizontalFlip(),
-                    visionTransforms.ToTensor(),
-                    visionTransforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-                ]
-            )
+            log_dict = self._validation_step(batch, batch_idx)
 
-            def collate_fn(images: PIL.Image.Image) -> torch.Tensor:
-                images = [T(image) for image in images]
-                return {"images": torch.stack(images)}
+    def _validation_step(self, batch, batch_idx, suffix=""):
+        x = self.get_input(batch, self.image_key)
+        quant, eloss, indices, loss_break = self.encode(x)
+        x_rec = self.decode(quant).clamp(-1, 1)
+        aeloss, log_dict_ae = self.loss(eloss, loss_break, x, x_rec, 0, self.global_step,
+                                        last_layer=self.get_last_layer(), split="val" + suffix)
 
-        return collate_fn
+        discloss, log_dict_disc = self.loss(eloss, loss_break, x, x_rec, 1, self.global_step,
+                                            last_layer=self.get_last_layer(), split="val" + suffix)
+
+        self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+        self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+
+        return self.log_dict
 
     def configure_optimizers(self):
-        lr = self.learning_rate
-        opt_gen = torch.optim.Adam(
-            list(self.encoder.parameters()) + list(self.decoder.parameters()) + list(self.quantize.parameters()), lr=lr, betas=(0.5, 0.9)
-        )
-        opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9))
+        lr = self.training_args.learning_rate
+        adam_betas = (self.training_args.adam_beta_1, self.training_args.adam_beta_2)
+        opt_gen = torch.optim.Adam(self.generator_params,
+                                   lr=lr, betas=adam_betas)
+        opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
+                                    lr=lr, betas=adam_betas)
 
+        # steps_per_epoch = len(self.trainer.datamodule._train_dataloader()) // self.trainer.world_size
+        steps_per_epoch = len(self.trainer.fit_loop._data_source.instance) // self.trainer.world_size // self.training_args.grad_accum_steps
         if self.trainer.is_global_zero:
-            print("step_per_epoch: {}".format(len(self.trainer.datamodule._train_dataloader()) // self.trainer.world_size))
+            print(f"{steps_per_epoch=}")
+        warmup_steps = steps_per_epoch * self.training_args.warmup_epochs
+        training_steps = steps_per_epoch * self.trainer.max_epochs
 
-        step_per_epoch = len(self.trainer.datamodule._train_dataloader()) // self.trainer.world_size
-        warmup_steps = step_per_epoch * self.warmup_epochs
-        training_steps = step_per_epoch * self.trainer.max_epochs
-
-        if self.scheduler_type == "None":
+        if self.training_args.scheduler_type == "None":
             return ({"optimizer": opt_gen}, {"optimizer": opt_disc})
 
-        if self.scheduler_type == "linear-warmup":
+        if self.training_args.scheduler_type == "linear-warmup":
             scheduler_ae = torch.optim.lr_scheduler.LambdaLR(opt_gen, Scheduler_LinearWarmup(warmup_steps))
             scheduler_disc = torch.optim.lr_scheduler.LambdaLR(opt_disc, Scheduler_LinearWarmup(warmup_steps))
 
-        elif self.scheduler_type == "linear-warmup_cosine-decay":
-            multipler_min = self.min_learning_rate / self.learning_rate
-            scheduler_ae = torch.optim.lr_scheduler.LambdaLR(
-                opt_gen, Scheduler_LinearWarmup_CosineDecay(warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min)
-            )
-            scheduler_disc = torch.optim.lr_scheduler.LambdaLR(
-                opt_disc, Scheduler_LinearWarmup_CosineDecay(warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min)
-            )
+        elif self.training_args.scheduler_type == "linear-warmup_cosine-decay":
+            multipler_min = self.training_args.min_learning_rate / self.training_args.learning_rate
+            scheduler_ae = torch.optim.lr_scheduler.LambdaLR(opt_gen, Scheduler_LinearWarmup_CosineDecay(
+                warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min))
+            scheduler_disc = torch.optim.lr_scheduler.LambdaLR(opt_disc, Scheduler_LinearWarmup_CosineDecay(
+                warmup_steps=warmup_steps, max_steps=training_steps, multipler_min=multipler_min))
         else:
             raise NotImplementedError()
-        return {"optimizer": opt_gen, "lr_scheduler": scheduler_ae}, {"optimizer": opt_disc, "lr_scheduler": scheduler_disc}
+
+        return {"optimizer": opt_gen, "lr_scheduler": scheduler_ae}, {"optimizer": opt_disc,
+                                                                      "lr_scheduler": scheduler_disc}
 
     def get_last_layer(self):
         return self.decoder.conv_out.weight
@@ -272,7 +250,7 @@ class VQModel(AutoEncoder):
         log = dict()
         x = self.get_input(batch, self.image_key)
         x = x.to(self.device)
-        xrec, _ = self.encode_and_decode(x)
+        xrec, _ = self(x)
         if x.shape[1] > 3:
             # colorize with random projection
             assert xrec.shape[1] > 3
@@ -287,5 +265,5 @@ class VQModel(AutoEncoder):
         if not hasattr(self, "colorize"):
             self.register_buffer("colorize", torch.randn(3, x.shape[1], 1, 1).to(x))
         x = F.conv2d(x, weight=self.colorize)
-        x = 2.0 * (x - x.min()) / (x.max() - x.min()) - 1.0
+        x = 2. * (x - x.min()) / (x.max() - x.min()) - 1.
         return x

@@ -1,14 +1,11 @@
 # Cyber
 
 **Cyber** represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed **CyberOrigin Dataset**, pushing the boundaries of artificial intelligence and machine learning.
-**Cyber** represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed **CyberOrigin Dataset**, pushing the boundaries of artificial intelligence and machine learning.
 
-Follow this document to train the models using our readily-available data or adapt your data for training.
 Follow this document to train the models using our readily-available data or adapt your data for training.
 
 ## CyberOrigin Dataset
 Our data includes information from home services, the logistics industry, and laboratory scenarios.
-For more details, please refer to our [Offical Data Website](https://cyberorigin2077.github.io/).
 For more details, please refer to our [Offical Data Website](https://cyberorigin2077.github.io/).
 
 * **Format & Description**</br>
@@ -28,28 +25,20 @@ bash ../scripts/download_dataset.sh
 ```
 
 * **Visualize the Dataset**</br>
-You can visualize the dataset using this [notebook](https://github.com/CyberOrigin2077/Cyber/tree/main/experiments/notebooks).
+You can visualize the dataset using this [notebook](notebooks/visualize_data.ipynb).
 Make sure to install the jupyter before running the notebook. `pip install jupyter notebook`
 
 
-## Quick Start for CyberOrigin Dataset
 ## Quick Start for CyberOrigin Dataset
 ### Download the Dataset
 ```bash
 bash ../scripts/download_dataset.sh
 ```
 ### Model Training & Evaluation
-The following steps will guide you through training the a GENIE dynamic model on the CyberOrigin dataset.
-
-**Local Training**</br>
-To train on your local machine using a single GPU, run:
-```bash
-python models/world/train_dynamic.py --data_dir data/cyber_pipette/data
+```
+python models/world/train_world.py --train-config-path configs/models/world/world_model.yaml --model-config-path configs/models/world/MagVIT_Genie.yaml
 ```
 *Note: The model will train on the default configuration provided.*
-
-**Training on Sagemaker**</br>
-Using AWS Sagemaker for training allows you to leverage multiple GPUs on the cloud to speed up training. To train on Sagemaker, follow the instructions in the [Sagemaker README](sagemaker/README.md).
 
 ## Model configuration and hyperparameters
 ### GENIE
@@ -84,18 +73,18 @@ Please refer to the help message for hyperparameter descriptions
 python models/world/train.py -h
 ```
 
-### Open-MAGVIT2
+### Magvit2
 Code is modified from [1XGPT](https://github.com/1x-technologies/1xgpt) and [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2) but removed unnecessary files and code.
 
 **Pretrained checkpoint**</br>
-Download the checkpoint [HERE](https://huggingface.co/TencentARC/Open-MAGVIT2/blob/main/imagenet_256_L.ckpt) Or run the command:
+Download the checkpoint [HERE](https://huggingface.co/datasets/1x-technologies/worldmodel/blob/main/magvit2.ckpt) Or run the command:
 
 ```
-huggingface-cli download TencentARC/Open-MAGVIT2 imagenet_256_L.ckpt --repo-type dataset --local-dir ./experiments/
+huggingface-cli download 1x-technologies/worldmodel magvit2.ckpt --repo-type dataset --local-dir ./experiments/
 ```
 
 **Try with our provided samples**</br>
-We provide the notebook you can try to compress and decompress your video. Please try [autoencoder_demo.ipynb](https://github.com/CyberOrigin2077/Cyber/blob/main/experiments/notebooks/autoencoder_demo.ipynb) and follow the instructions.
+We provide the notebook you can try to compress and decompress your video. Please try [autoencoder_demo.ipynb](notebooks/autoencoder_demo.ipynb) and follow the instructions.
 
 **Compress your video data**</br>
 ```
@@ -116,21 +105,3 @@ python experiments/compress_video.py --root_path /path/to/root/folder --ckpt_pat
 ```
 
 ```videos.bin``` ```metadata.json``` ```segment_ids.bin``` will be generated in ```output_path/date_folder/compressed```, you can decompress it and check the reconstructed video.
-
-**Model training**
-
-```
-image-folder
-    ├── image_1.png
-    ├── image_2.png
-    ├── image_3.png
-    ├── image_4.png
-    ├── ...
-```
-
-The following command instructs you to train the Open-Magvit2 tokenizer on your customized image dataset, please ensure your data is the same structure as above.
-```
-python experiments/models/world/train_openmagvit2.py --config experiments/configs/models/world/openmagvit2.yaml --data_dir path/to/image/folder --output_dir path/to/output/folder
-```
-
-Please refer to [openmagvit2.yaml](configs/models/world/openmagvit2.yaml) for more hyperparameter descriptions.

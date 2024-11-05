@@ -2,13 +2,11 @@
 
 import torch
 import torch.nn as nn
+import torchvision
 from torchvision import models
-from torchvision.models import VGG16_Weights
 from collections import namedtuple
-from pathlib import Path
-import os
 
-from cyber.models.world.autoencoder.magvit2.util import get_ckpt_path
+from magvit2.util import get_ckpt_path
 
 
 class LPIPS(nn.Module):
@@ -28,6 +26,8 @@ class LPIPS(nn.Module):
             param.requires_grad = False
 
     def load_from_pretrained(self, name="vgg_lpips"):
+        # modified load and save path to {Path.home}/.cache/cyber
+        from pathlib import Path
         ckpt = get_ckpt_path(name, f"{Path.home()}/.cache/cyber/magvit2/modules/autoencoder/lpips")
         self.load_state_dict(torch.load(ckpt, map_location=torch.device("cpu")), strict=False)
         print("loaded pretrained LPIPS loss from {}".format(ckpt))
@@ -60,35 +60,28 @@ class LPIPS(nn.Module):
 class ScalingLayer(nn.Module):
     def __init__(self):
         super(ScalingLayer, self).__init__()
-        self.register_buffer("shift", torch.Tensor([-0.030, -0.088, -0.188])[None, :, None, None])
-        self.register_buffer("scale", torch.Tensor([0.458, 0.448, 0.450])[None, :, None, None])
+        self.register_buffer('shift', torch.Tensor([-.030, -.088, -.188])[None, :, None, None])
+        self.register_buffer('scale', torch.Tensor([.458, .448, .450])[None, :, None, None])
 
     def forward(self, inp):
         return (inp - self.shift) / self.scale
 
 
 class NetLinLayer(nn.Module):
-    """A single linear layer which does a 1x1 conv"""
-
+    """ A single linear layer which does a 1x1 conv """
     def __init__(self, chn_in, chn_out=1, use_dropout=False):
         super(NetLinLayer, self).__init__()
-        layers = (
-            [
-                nn.Dropout(),
-            ]
-            if (use_dropout)
-            else []
-        )
-        layers += [
-            nn.Conv2d(chn_in, chn_out, 1, stride=1, padding=0, bias=False),
-        ]
+        layers = [nn.Dropout(), ] if (use_dropout) else []
+        layers += [nn.Conv2d(chn_in, chn_out, 1, stride=1, padding=0, bias=False), ]
         self.model = nn.Sequential(*layers)
 
 
 class vgg16(torch.nn.Module):
     def __init__(self, requires_grad=False, pretrained=True):
         super(vgg16, self).__init__()
-        vgg_pretrained_features = models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features
+        vgg_pretrained_features = models.vgg16(
+            weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1 if pretrained else None
+        ).features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
@@ -120,7 +113,7 @@ class vgg16(torch.nn.Module):
         h_relu4_3 = h
         h = self.slice5(h)
         h_relu5_3 = h
-        vgg_outputs = namedtuple("VggOutputs", ["relu1_2", "relu2_2", "relu3_3", "relu4_3", "relu5_3"])
+        vgg_outputs = namedtuple("VggOutputs", ['relu1_2', 'relu2_2', 'relu3_3', 'relu4_3', 'relu5_3'])
         out = vgg_outputs(h_relu1_2, h_relu2_2, h_relu3_3, h_relu4_3, h_relu5_3)
         return out
 
