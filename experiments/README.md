@@ -1,14 +1,11 @@
 # Cyber
 
 **Cyber** represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed **CyberOrigin Dataset**, pushing the boundaries of artificial intelligence and machine learning.
-**Cyber** represents a model implementation that seamlessly integrates state-of-the-art (SOTA) world models with the proposed **CyberOrigin Dataset**, pushing the boundaries of artificial intelligence and machine learning.
 
-Follow this document to train the models using our readily-available data or adapt your data for training.
 Follow this document to train the models using our readily-available data or adapt your data for training.
 
 ## CyberOrigin Dataset
 Our data includes information from home services, the logistics industry, and laboratory scenarios.
-For more details, please refer to our [Offical Data Website](https://cyberorigin2077.github.io/).
 For more details, please refer to our [Offical Data Website](https://cyberorigin2077.github.io/).
 
 * **Format & Description**</br>
@@ -32,7 +29,6 @@ You can visualize the dataset using this [notebook](https://github.com/CyberOrig
 Make sure to install the jupyter before running the notebook. `pip install jupyter notebook`
 
 
-## Quick Start for CyberOrigin Dataset
 ## Quick Start for CyberOrigin Dataset
 ### Download the Dataset
 ```bash
@@ -98,24 +94,20 @@ huggingface-cli download TencentARC/Open-MAGVIT2 imagenet_256_L.ckpt --repo-type
 We provide the notebook you can try to compress and decompress your video. Please try [autoencoder_demo.ipynb](https://github.com/CyberOrigin2077/Cyber/blob/main/experiments/notebooks/autoencoder_demo.ipynb) and follow the instructions.
 
 **Compress your video data**</br>
+
+Please follow the command below to encode and decode your data.
+
+Compress videos to tokens:
 ```
-root-folder
-    └── subfolder1/
-        ├── color(videos inside)
-            ├── 1b17c56e-02acc10001.mp4
-            ├── 0ce6190f-02acc11002.mp4
-            ├── ...
-        ├── ...
-    └── subfolder2/
-        ├── ...
+python experiments/notebooks/compress_and_recon.py --config_file experiments/configs/models/world/openmagvit2.yaml --ckpt_path path/to/ckpt/file --video_path path/to/video/file --save_dir path/to/output/file --mode encode
 ```
 
-Make sure your datasets are the same as the structure above.
-```bash
-python experiments/compress_video.py --root_path /path/to/root/folder --ckpt_path experiments/magvit2.ckpt --output_path /path/to/output/folder
+Reconstruct videos from tokens:
+```
+python experiments/notebooks/compress_and_recon.py --config_file experiments/configs/models/world/openmagvit2.yaml --ckpt_path path/to/ckpt/file --tokens_path path/to/tokens/file --save_dir path/to/output/file --mode decode
 ```
 
-```videos.bin``` ```metadata.json``` ```segment_ids.bin``` will be generated in ```output_path/date_folder/compressed```, you can decompress it and check the reconstructed video.
+<!-- ```videos.bin``` ```metadata.json``` ```segment_ids.bin``` will be generated in ```output_path/date_folder/compressed```, you can decompress it and check the reconstructed video. -->
 
 **Model training**
 
