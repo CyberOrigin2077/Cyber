@@ -5,7 +5,7 @@
 The development of world models in robotics has long been a cornerstone of advanced research, with most approaches relying heavily on vast, platform-specific datasets. These datasets, while valuable, often limit scalability and generalization to different robotic platforms, restricting their broader applicability.
 
 In contrast, **CYBER** approaches world modeling from a "first principles" perspective, drawing inspiration from how humans naturally acquire skills through experience and interaction with their environment. **CYBER** is the first general Robotic Operational System designed to adapt to both teleoperated manipulation and human operation data, enabling robots to learn and predict across a wide range of tasks and environments. It builds with a <u>Physical World Model</u>, a cross-embodied <u>Visual-Language Action Model</u> (VLA), a <u>Perception Model</u>, a <u>Memory Model</u>, and a <u>Control Model</u> to help robots learn, predict, and memory across various tasks and embodiments.
-In contrast, **CYBER** approaches world modeling from a "first principles" perspective, drawing inspiration from how humans naturally acquire skills through experience and interaction with their environment. **CYBER** is the first general Robotic Operational System designed to adapt to both teleoperated manipulation and human operation data, enabling robots to learn and predict across a wide range of tasks and environments. It builds with a <u>Physical World Model</u>, a cross-embodied <u>Visual-Language Action Model</u> (VLA), a <u>Perception Model</u>, a <u>Memory Model</u>, and a <u>Control Model</u> to help robots learn, predict, and memory across various tasks and embodiments.
+
 
 At the same time, **CYBER** also provide millions of human operation datasets and baseline models over HuggingFace 🤗 to enhance embodied learning, and experimental evalaution tool box to help researchers to test and evaluate their models in both simulation and real world.
 
@@ -34,7 +34,6 @@ At the same time, **CYBER** also provide millions of human operation datasets an
 
 **🌍 World Model** is now available. Additional models will be released soon.
 
-**🌍 World Model** is now available. Additional models will be released soon.
 
 ## ⚙️ Setup
 
@@ -77,10 +76,6 @@ Currently, four tasks are available for download:
 - 🤗 [Take Item](https://huggingface.co/datasets/cyberorigin/cyber_take_the_item): Single-arm manipulation demonstrations of object pick-and-place tasks.
 - 🤗 [Twist Tube](https://huggingface.co/datasets/cyberorigin/cyber_twist_the_tube): Bimanual demonstration dataset of coordinated tube manipulation sequences.
 - 🤗 [Fold Towels](https://huggingface.co/datasets/cyberorigin/cyber_fold_towels): Bimanual manipulation demonstrations of deformable object folding procedures.
-- 🤗 [Pipette](https://huggingface.co/datasets/cyberorigin/cyber_pipette): Bimanual human demonstration dataset of precision pipetting tasks for laboratory manipulation.
-- 🤗 [Take Item](https://huggingface.co/datasets/cyberorigin/cyber_take_the_item): Single-arm manipulation demonstrations of object pick-and-place tasks.
-- 🤗 [Twist Tube](https://huggingface.co/datasets/cyberorigin/cyber_twist_the_tube): Bimanual demonstration dataset of coordinated tube manipulation sequences.
-- 🤗 [Fold Towels](https://huggingface.co/datasets/cyberorigin/cyber_fold_towels): Bimanual manipulation demonstrations of deformable object folding procedures.
 
 ### Available Models
 
@@ -111,7 +106,7 @@ outputs = model(**inputs)
 ```
 
 For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index). -->
-For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index). -->
+For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index).
 
 
 ## 🕹️ Usage
