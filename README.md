@@ -70,7 +70,6 @@ Alternatively, you can install it manually by following the steps below:
 ### Available Data
 
 Currently, four tasks are available for download:
-Currently, four tasks are available for download:
 
 - 🤗 [Pipette](https://huggingface.co/datasets/cyberorigin/cyber_pipette): Bimanual human demonstration dataset of precision pipetting tasks for laboratory manipulation.
 - 🤗 [Take Item](https://huggingface.co/datasets/cyberorigin/cyber_take_the_item): Single-arm manipulation demonstrations of object pick-and-place tasks.
@@ -105,7 +104,7 @@ inputs = tokenizer("Hello, world!", return_tensors="pt")
 outputs = model(**inputs)
 ```
 
-For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index). -->
+-->
 For more details, please refer to the [Hugging Face documentation](https://huggingface.co/docs/transformers/index).
 
 
@@ -144,7 +143,7 @@ Please refer to the [experiments](docs/experiments/world_model.md) for more deta
 
 ### 📕 References
 
-[Magvit2](https://github.com/TencentARC/Open-MAGVIT2) and [GENIE](https://arxiv.org/abs/2402.15391) adapted from [1xGPT Challenge](https://github.com/1x-technologies/1xgpt)
+
 [Magvit2](https://github.com/TencentARC/Open-MAGVIT2) and [GENIE](https://arxiv.org/abs/2402.15391) adapted from [1xGPT Challenge](https://github.com/1x-technologies/1xgpt)
 1X Technologies. (2024). 1X World Model Challenge (Version 1.1) [Data set]
 
