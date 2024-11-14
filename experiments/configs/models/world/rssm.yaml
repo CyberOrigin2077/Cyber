@@ -1,0 +1,5 @@
+hidden_size: 256
+action_size: 16
+latent_size: 256
+embed_size: 256
+layer_width: 256

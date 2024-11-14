@@ -135,10 +135,10 @@ class VQModel(AutoEncoder):
         Downsampling factor is 2^(len(ch_mult)-1).
 
         Args:
-            x(torch.Tensor): input image batch shape(B, 3, H, W)
+            x(torch.Tensor): input image batch size(B, 3, H, W)
 
         Returns:
-            torch.Tensor: quantized latent code shape(B, H/Ds, W/Ds) Ds: downsampling factor
+            torch.Tensor: quantized latent code size(B, H/Ds, W/Ds) Ds: downsampling factor
         """
         assert len(x.shape) == 4
         assert x.shape[1] == 3
@@ -159,10 +159,10 @@ class VQModel(AutoEncoder):
         Decode the latent code to the image.
 
         Args:
-            tokens(torch.Tensor): quantized latent code shape(B, H, W)
+            tokens(torch.Tensor): quantized latent code size(B, H, W)
 
         Returns:
-            torch.Tensor: reconstructed image shape(B, 3, H*Ds, W*Ds) Ds: downsampling factor
+            torch.Tensor: reconstructed image size(B, 3, H*Ds, W*Ds) Ds: downsampling factor
         """
         assert len(tokens.shape) == 3
         bhwc = (tokens.shape[0], tokens.shape[1], tokens.shape[2], self.quantize.codebook_dim)
@@ -197,7 +197,7 @@ class VQModel(AutoEncoder):
         Compute the training loss for the the VQGAN model.
         Returns the generator loss and discriminator loss
         Args:
-            images: torch.Tensor: input images shape(B, 3, H, W)
+            images: torch.Tensor: input images size(B, 3, H, W)
 
         Returns:
             tuple(torch.Tensor, torch.Tensor): (generator loss, discriminator loss)

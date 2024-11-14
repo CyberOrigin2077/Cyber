@@ -82,7 +82,7 @@ class STMaskGIT(DynamicModel):
         Generates `frames_to_generate` frames given `input`.
 
         Args:
-            input(torch.Tensor[torch.long]): Input tokens, size (B, T' * H * W) where T' = T - frames_to_generate.
+            input(torch.Tensor[torch.long]): Input tokens, size(B, T' * H * W) where T' = T - frames_to_generate.
             frames_to_generate: Number of frames to generate.
             return_logits: If True, will return the logits for each generated frame.
             maskgit_steps: Number of MaskGIT-style inference steps to take.
@@ -271,8 +271,8 @@ class STMaskGIT(DynamicModel):
         Compute the training loss for the module given input tokens and labels.
 
         Args:
-            x(torch.LongTensor): The input tokens, size (B, T * H * W)
-            labels(torch.LongTensor): The target tokens, size (B, T * H * W)
+            x(torch.LongTensor): The input tokens, size(B, T * H * W)
+            labels(torch.LongTensor): The target tokens, size(B, T * H * W)
 
         Returns:
             relevant_loss(torch.FloatTensor): The cross entropy loss of the input.

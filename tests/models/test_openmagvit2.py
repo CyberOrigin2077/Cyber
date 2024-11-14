@@ -6,7 +6,6 @@ import torch
 from tests.models.utils import reseed_everything
 
 import pytest
-import sys
 
 class TestOpenMagVit2:
     @classmethod
