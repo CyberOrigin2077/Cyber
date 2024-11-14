@@ -7,12 +7,12 @@ from skimage.io import imsave
 def get_xyz_coords_from_msg(msg, fields, rotation):
     points_numpify = ros_numpy.point_cloud2.pointcloud2_to_array(msg)
     points_numpify = points_numpify.ravel()
-    if fields == 'xyz':
+    if fields == "xyz":
         points_x = np.array([x[0] for x in points_numpify])[:, np.newaxis]
         points_y = np.array([x[1] for x in points_numpify])[:, np.newaxis]
         points_z = np.array([x[2] for x in points_numpify])[:, np.newaxis]
         points_xyz = np.concatenate([points_x, points_y, points_z], axis=1)
-    elif fields == 'xyzrgb':
+    elif fields == "xyzrgb":
         points_numpify = ros_numpy.point_cloud2.split_rgb_field(points_numpify)
         points_x = np.array([x[0] for x in points_numpify])[:, np.newaxis]
         points_y = np.array([x[1] for x in points_numpify])[:, np.newaxis]
@@ -22,7 +22,7 @@ def get_xyz_coords_from_msg(msg, fields, rotation):
         points_b = np.array([x[5] for x in points_numpify])[:, np.newaxis]
         points_xyz = np.concatenate([points_x, points_y, points_z, points_r, points_g, points_b], axis=1)
     else:
-        print('Incorrect pointcloud fields {}. Fields must be `xyz` or `xyzrgb`'.format(fields))
+        print("Incorrect pointcloud fields {}. Fields must be `xyz` or `xyzrgb`".format(fields))
         points_xyz = None
     points_xyz = rotate_pcd(points_xyz, rotation)
     return points_xyz
@@ -80,7 +80,7 @@ def rotate(x, y, angle):
 def remove_floor_and_ceil(cloud, floor_height=-0.9, ceil_height=1.5):
     heights = np.linspace(-4.0, 4.0, 41)
     floor_index = None
-    if floor_height == 'auto':
+    if floor_height == "auto":
         bins = []
         for i, height in enumerate(heights[:-1]):
             bins.append(len(cloud[(cloud[:, 2] > height) * (cloud[:, 2] < heights[i + 1])]))
@@ -88,12 +88,12 @@ def remove_floor_and_ceil(cloud, floor_height=-0.9, ceil_height=1.5):
         floor_index = np.argmax(bins[:20]) + 1
         floor_height = heights[floor_index]
         assert floor_index < len(heights) - 5
-    if ceil_height == 'auto':
+    if ceil_height == "auto":
         if floor_index is None:
             floor_index = 0
             while floor_index < len(heights) - 6 and heights[floor_index] < floor_height:
                 floor_index += 1
-        ceil_index = floor_index + 5 + np.argmax(bins[floor_index + 5:])
+        ceil_index = floor_index + 5 + np.argmax(bins[floor_index + 5 :])
         ceil_height = heights[ceil_index]
     # print('Floor height:', floor_height)
     # print('Ceil height:', ceil_height)
@@ -131,13 +131,14 @@ def get_iou(rel_x, rel_y, rel_theta, cur_cloud, v_cloud, save=False, cnt=0):
     rel_x_rotated = -rel_x * np.cos(rel_theta) - rel_y * np.sin(rel_theta)
     rel_y_rotated = rel_x * np.sin(rel_theta) - rel_y * np.cos(rel_theta)
     rel_x, rel_y = rel_x_rotated, rel_y_rotated
-    if np.sqrt(rel_x ** 2 + rel_y ** 2) > 5:
+    if np.sqrt(rel_x**2 + rel_y**2) > 5:
         return 0
     cur_cloud_transformed = transform_pcd(cur_cloud, rel_x, rel_y, rel_theta)
     resolution = 0.1
     cur_grid_transformed = get_occupancy_grid(cur_cloud_transformed, resolution=resolution)
-    cur_grid_transformed = raycast(cur_grid_transformed, center_point=(cur_grid_transformed.shape[0] // 2 + rel_x / resolution,
-                                                                       cur_grid_transformed.shape[1] // 2 + rel_y / resolution))
+    cur_grid_transformed = raycast(
+        cur_grid_transformed, center_point=(cur_grid_transformed.shape[0] // 2 + rel_x / resolution, cur_grid_transformed.shape[1] // 2 + rel_y / resolution)
+    )
     cur_grid_transformed[cur_grid_transformed > 0] = 1
     v_grid = get_occupancy_grid(v_cloud, resolution=resolution)
     v_grid = raycast(v_grid)
@@ -150,14 +151,14 @@ def get_iou(rel_x, rel_y, rel_theta, cur_cloud, v_cloud, save=False, cnt=0):
     grid_aligned = (grid_aligned * 255).astype(np.uint8)
     if save:
         # print(cnt)
-        save_dir = '/home/kirill/test_iou/{}'.format(cnt)
+        save_dir = "/home/kirill/test_iou/{}".format(cnt)
         if not os.path.exists(save_dir):
             os.mkdir(save_dir)
-        np.savez(os.path.join(save_dir, 'cur_cloud.npz'), cur_cloud)
-        np.savez(os.path.join(save_dir, 'cur_cloud_transformed.npz'), cur_cloud_transformed)
-        np.savez(os.path.join(save_dir, 'v_cloud.npz'), v_cloud)
-        np.savetxt(os.path.join(save_dir, 'rel_pose.txt'), np.array([rel_x, rel_y, rel_theta]))
-        imsave(os.path.join(save_dir, 'grid_aligned.png'), grid_aligned)
+        np.savez(os.path.join(save_dir, "cur_cloud.npz"), cur_cloud)
+        np.savez(os.path.join(save_dir, "cur_cloud_transformed.npz"), cur_cloud_transformed)
+        np.savez(os.path.join(save_dir, "v_cloud.npz"), v_cloud)
+        np.savetxt(os.path.join(save_dir, "rel_pose.txt"), np.array([rel_x, rel_y, rel_theta]))
+        imsave(os.path.join(save_dir, "grid_aligned.png"), grid_aligned)
     return intersection / union
 
 

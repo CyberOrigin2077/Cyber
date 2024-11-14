@@ -70,16 +70,16 @@ class STBlock(nn.Module):
     def forward(self, x_TSC: Tensor) -> Tensor:
         # Process attention spatially
         T, S = x_TSC.size(1), x_TSC.size(2)
-        x_SC = rearrange(x_TSC, 'B T S C -> (B T) S C')
+        x_SC = rearrange(x_TSC, "B T S C -> (B T) S C")
         x_SC = x_SC + self.spatial_attn(self.norm1(x_SC))
 
         # Process attention temporally
-        x_TC = rearrange(x_SC, '(B T) S C -> (B S) T C', T=T)
+        x_TC = rearrange(x_SC, "(B T) S C -> (B S) T C", T=T)
         x_TC = x_TC + self.temporal_attn(x_TC, causal=True)
 
         # Apply the MLP
         x_TC = x_TC + self.mlp(self.norm2(x_TC))
-        x_TSC = rearrange(x_TC, '(B S) T C -> B T S C', S=S)
+        x_TSC = rearrange(x_TC, "(B S) T C -> B T S C", S=S)
         return x_TSC
 
 
@@ -99,18 +99,23 @@ class STTransformerDecoder(nn.Module):
         mlp_drop: float = 0.0,
     ):
         super().__init__()
-        self.layers = nn.ModuleList([STBlock(
-            num_heads=num_heads,
-            d_model=d_model,
-            qkv_bias=qkv_bias,
-            proj_bias=proj_bias,
-            qk_norm=qk_norm,
-            use_mup=use_mup,
-            attn_drop=attn_drop,
-            mlp_ratio=mlp_ratio,
-            mlp_bias=mlp_bias,
-            mlp_drop=mlp_drop,
-        ) for _ in range(num_layers)])
+        self.layers = nn.ModuleList(
+            [
+                STBlock(
+                    num_heads=num_heads,
+                    d_model=d_model,
+                    qkv_bias=qkv_bias,
+                    proj_bias=proj_bias,
+                    qk_norm=qk_norm,
+                    use_mup=use_mup,
+                    attn_drop=attn_drop,
+                    mlp_ratio=mlp_ratio,
+                    mlp_bias=mlp_bias,
+                    mlp_drop=mlp_drop,
+                )
+                for _ in range(num_layers)
+            ]
+        )
 
     def forward(self, tgt):
         x = tgt

@@ -1,45 +1,48 @@
 import logging
-
+import cv2
+import glob
 import numpy as np
-import pandas as pd
-import torch
-
-from cyber.dataset.cyberdataset import BaseCyberDataset
+from torch.utils.data import Dataset
 
 
 # Create a package-level logger
 logger = logging.getLogger(__name__)
 
 
-class RawVideoDataset(BaseCyberDataset):
+class RawVideoDataset(Dataset):
     """
-    Base class for all cyber datasets, provides some common functionality.
+    a simple dataset used to retrieve raw frames from videos
+    videos are stored in a directory with the following structure:
+    dataset_path
+    ├── video_0.mp4
+    ├── video_1.mp4
+    ...
     """
 
-    def __init__(self, dataset_path, only_color=True):
-        super().__init__(dataset_path)
-        self.only_color = only_color
+    def __init__(self, dataset_path):
+        super().__init__()
+        self.dataset_path = dataset_path
+        self.video_files = glob.glob(f"{dataset_path}/*.mp4")
 
-        # self.episodes_description = self.get_episodes_description(dataset_path)
+    def __len__(self) -> int:
+        """
+        return the number of videos in the dataset
+        """
+        return len(self.video_files)
 
-    @classmethod
-    def _load_all_modalities_data(cls, episode_description: pd.Series, only_color=True) -> dict:
-        modalities = {}
-        episode_id = episode_description["episode_id"]
-        modalities_description = episode_description["modalities"]
-        for modality_name, modality_description in modalities_description.items():
-            if only_color and modality_name != "color":
-                continue
-            modality = cls._load_modality_data(episode_description["path"], episode_id, modality_name, modality_description)
-            modalities[modality_name] = modality
-        return modalities
+    def __getitem__(self, idx) -> np.ndarray:
+        """
+        get all frames from a single video, return them as a list of numpy arrays
+        """
+        video_path = self.video_files[idx]
+        cap = cv2.VideoCapture(video_path)
 
-    def __getitem__(self, idx):
-        data = self._load_all_modalities_data(self.episode_discription.loc[idx], self.only_color)
-        matched_data = {}
-        for modality_name, modality_data in data.items():
-            if modality_data["data"].dtype == np.uint16:
-                logger.warning(f"{modality_name} has dtype uint16, this is not supported by torch, skipping this modality")
-                continue
-            matched_data[modality_name] = torch.tensor(modality_data["data"])
-        return matched_data
+        frames = []
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames.append(frame)
+
+        cap.release()
+        return np.array(frames)
