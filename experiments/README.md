@@ -81,7 +81,7 @@ python models/world/train.py -h
 ```
 
 ### Open-MAGVIT2
-Code is modified from [1XGPT](https://github.com/1x-technologies/1xgpt) and [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2) but removed unnecessary files and code.
+The code is modified from [1XGPT](https://github.com/1x-technologies/1xgpt) and [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2) but removed unnecessary files and code.
 
 **Pretrained checkpoint**</br>
 Download the checkpoint [HERE](https://huggingface.co/TencentARC/Open-MAGVIT2/blob/main/imagenet_256_L.ckpt) Or run the command:
@@ -94,7 +94,6 @@ huggingface-cli download TencentARC/Open-MAGVIT2 imagenet_256_L.ckpt --repo-type
 We provide the notebook you can try to compress and decompress your video. Please try [autoencoder_demo.ipynb](https://github.com/CyberOrigin2077/Cyber/blob/main/experiments/notebooks/autoencoder_demo.ipynb) and follow the instructions.
 
 **Compress your video data**</br>
-
 Please follow the command below to encode and decode your data.
 
 Compress videos to tokens:
@@ -110,7 +109,6 @@ python experiments/notebooks/compress_and_recon.py --config_file experiments/con
 <!-- ```videos.bin``` ```metadata.json``` ```segment_ids.bin``` will be generated in ```output_path/date_folder/compressed```, you can decompress it and check the reconstructed video. -->
 
 **Model training**
-
 ```
 image-folder
     ├── image_1.png
@@ -126,3 +124,37 @@ python experiments/models/world/train_openmagvit2.py --config experiments/config
 ```
 
 Please refer to [openmagvit2.yaml](configs/models/world/openmagvit2.yaml) for more hyperparameter descriptions.
+
+### Cosmos-Tokenizer
+The code is modified from [Cosmos-Tokenizer](https://github.com/NVIDIA/Cosmos-Tokenizer) but removed unnecessary files and code. Currently, Cosmos-Tokenizer is available for **inference**</br> only.
+
+**Pretrained checkpoint**</br>
+Download the checkpoint [HERE](https://huggingface.co/collections/nvidia/cosmos-tokenizer-672b93023add81b66a8ff8e6) Or follow this snippet below:
+
+```
+from huggingface_hub import login, snapshot_download
+import os
+
+login(token="<YOUR-HF-TOKEN>", add_to_git_credential=True)
+model_names = [
+        "Cosmos-Tokenizer-CI8x8",
+        "Cosmos-Tokenizer-CI16x16",
+        "Cosmos-Tokenizer-CV4x8x8",
+        "Cosmos-Tokenizer-CV8x8x8",
+        "Cosmos-Tokenizer-CV8x16x16",
+        "Cosmos-Tokenizer-DI8x8",
+        "Cosmos-Tokenizer-DI16x16",
+        "Cosmos-Tokenizer-DV4x8x8",
+        "Cosmos-Tokenizer-DV8x8x8",
+        "Cosmos-Tokenizer-DV8x16x16",
+]
+for model_name in model_names:
+    hf_repo = "nvidia/" + model_name
+    local_dir = "pretrained_ckpts/" + model_name
+    os.makedirs(local_dir, exist_ok=True)
+    print(f"downloading {model_name}...")
+    snapshot_download(repo_id=hf_repo, local_dir=local_dir)
+```
+**Try with our provided samples**</br>
+We provide the notebook you can try to encode your data in discrete tokens and continuous latent space, and decode tokens for visualization. Please try [cosmos_demo.ipynb](https://github.com/CyberOrigin2077/Cyber/blob/main/experiments/notebooks/cosmos_demo.ipynb) and follow the instructions.
+
