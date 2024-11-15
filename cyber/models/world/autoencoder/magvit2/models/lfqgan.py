@@ -1,3 +1,8 @@
+"""
+Modification of Open-MAGVIT2 code, including adding unified cyber-style interfaces,
+removing dependency on Lightning and adding docstrings.
+"""
+
 import torch
 import torch.nn.functional as F
 import torchvision.transforms.transforms as visionTransforms

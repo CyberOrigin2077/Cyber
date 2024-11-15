@@ -1,3 +1,8 @@
+"""
+Modified from 1xGPT codebase:
+Changed config loading, adapted to use cyber-style interface, added docstrings, removed unused code.
+"""
+
 import random
 import math
 import os

@@ -1,3 +1,7 @@
+"""
+Modification of Open-MAGVIT2 code; changed ckpt loading path.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

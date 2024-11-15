@@ -1,5 +1,9 @@
 """Stripped version of https://github.com/richzhang/PerceptualSimilarity/tree/master/models"""
 
+"""
+Modification of Open-MAGVIT2 code; changed ckpt loading path.
+"""
+
 import torch
 import torch.nn as nn
 from torchvision import models
