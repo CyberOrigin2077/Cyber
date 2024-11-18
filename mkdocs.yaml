@@ -51,14 +51,15 @@ nav:
     - Home: index.md
     - Key Features: features.md
     - Modular Components:
-          - World Model: tutorial/world.md
-          - Action Model: tutorial/action.md
-          - Perception Model: tutorial/preception.md
-          - Memory Model: tutorial/memory.md
-          - Control Model: tutorial/control.md
+        - World Model: tutorial/world.md
+        - Action Model: tutorial/action.md
+        # - Perception Model: tutorial/preception.md
+        # - Memory Model: tutorial/memory.md
+        # - Control Model: tutorial/control.md
     - Setup: setup.md
     - Hugging Face Integration: huggingface.md
-    - Usage: experiments/world_model.md
+    - Usage: 
+        - World Model: experiments/world_model.md
     - File Structure: file_structure.md
     - References: reference.md
     - Contact: contact.md

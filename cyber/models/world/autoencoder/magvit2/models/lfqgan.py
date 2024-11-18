@@ -25,6 +25,11 @@ from cyber.models.world import AutoEncoder
 import PIL
 import logging
 
+"""
+Modification of Open-MAGVIT2 code, including adding unified cyber-style interfaces, removing dependency on Lightning and adding docstrings.
+Modified by CYBERORIGIN PTE. LTD. on 2024-11-04
+"""
+
 
 class VQModel(AutoEncoder):
     def __init__(self, config):

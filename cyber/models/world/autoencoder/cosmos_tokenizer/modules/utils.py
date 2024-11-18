@@ -42,22 +42,6 @@ def cast_tuple(t: Any, length: int = 1) -> Any:
     return t if isinstance(t, tuple) else ((t,) * length)
 
 
-# ! modified the above function to the below function
-# def cast_tuple(t: Union[int, Tuple[int, ...]], length: int = 1) -> Tuple[int, ...]:
-#     """Convert a value to tuple of specified length.
-
-#     Args:
-#         t: Integer or tuple of integers
-#         length: Desired length of output tuple
-
-#     Returns:
-#         Tuple of integers with specified length
-#     """
-#     if isinstance(t, tuple):
-#         return t
-#     return tuple([t] * length)
-
-
 def replication_pad(x):
     return torch.cat([x[:, :, :1, ...], x], dim=2)
 

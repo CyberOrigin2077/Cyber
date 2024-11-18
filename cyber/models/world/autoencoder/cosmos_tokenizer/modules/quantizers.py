@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -13,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Quantizers for discrete image and video tokenization."""
+
+"""
+Modified the quantizers for discrete image and video tokenization.
+Modified by CYBERORIGIN PTE. LTD. on 2024-11-18
+"""
 
 from typing import Optional, Any
 

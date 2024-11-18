@@ -15,7 +15,10 @@
 # limitations under the License.
 """Utility functions for the inference libraries."""
 
-"""Modified the utility functions for the inference libraries."""
+"""
+Modified the utility functions for the inference libraries.
+Modified by CYBERORIGIN PTE. LTD. on 2024-11-18
+"""
 
 import os
 from glob import glob

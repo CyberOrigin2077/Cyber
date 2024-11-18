@@ -16,8 +16,12 @@ At the same time, **CYBER** also provide millions of human operation datasets an
 
 - [**🌍 World Model**](tutorial/world.md): Learns from physical interactions to understand and predict the environment.
 - [**🎬 Action Model**](tutorial/action.md): Learns from actions and interactions to perform tasks and navigate.
-- [**👁️ Perception Model**](tutorial/preception.md): Processes sensory inputs to perceive and interpret surroundings.
-- [**🧠 Memory Model**](tutorial/memory.md): Utilizes past experiences to inform current decisions.
-- [**🎮 Control Model**](tutorial/control.md): Manages control inputs for movement and interaction.
+- [**👁️ Perception Model**](): Processes sensory inputs to perceive and interpret surroundings.
+- [**🧠 Memory Model**](): Utilizes past experiences to inform current decisions.
+- [**🎮 Control Model**](): Manages control inputs for movement and interaction.
+---
 
-**🌍 World Model** is now available. Additional models will be released soon.
+## 📰 Release
+- **2024-11-18:** **🌍 World Model** supports new tokenizer model [Cosmos-Tokenizer](https://github.com/NVIDIA/Cosmos-Tokenizer) and new dynamic model [Deep Planning Network](https://github.com/-google-research/planet)
+- **2024-10-23:** **🌍 World Model** is now available. Additional models will be released soon.
+---

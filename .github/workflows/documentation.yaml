@@ -6,12 +6,14 @@ on:
   push: # When the main branch is pushed to the GitHub repository
     branches:
       - main
+      - internal
     paths:
       - 'docs/**'
       - 'mkdocs.yaml'
   pull_request: # When a pull request is merged into the main branch
     branches:
       - main
+      - internal
     paths:
       - 'docs/**'
       - 'mkdocs.yaml'

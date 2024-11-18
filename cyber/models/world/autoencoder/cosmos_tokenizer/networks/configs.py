@@ -16,7 +16,8 @@
 """The default image and video tokenizer configs."""
 
 """
-Modified costom tokenizer configs for the cosmos video tokenizer.
+Romoved the continuous_image and discrete_image configurations.
+Modified by CYBERORIGIN PTE. LTD. on 2024-11-18
 """
 
 from cyber.models.world.autoencoder.cosmos_tokenizer.modules import (

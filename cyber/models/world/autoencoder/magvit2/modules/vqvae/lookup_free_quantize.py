@@ -10,6 +10,10 @@ https://github.com/lucidrains/vector-quantize-pytorch/blob/master/vector_quantiz
 https://github.com/theAdamColton/ijepa-enhanced/blob/7edef5f7288ae8f537f0db8a10044a2a487f70c9/ijepa_enhanced/lfq.py
 """
 
+"""
+Modified get_codebook_entry function to return the codebook entry in the desired result.
+Modified by CYBERORIGIN PTE. LTD. on 2024-11-04
+"""
 from math import log2, ceil
 from collections import namedtuple
 

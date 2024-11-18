@@ -14,6 +14,6 @@ Currently, four tasks are available for download:
 Our pretrained models will be released on Hugging Face soon:
 
 - Cyber-World-Large (Coming Soon)
-- Cyber-World-Base (Coming Soon)
+- [Cyber-World-Base](https://huggingface.co/cyberorigin/GENIE_Base)
 
 - Cyber-World-Small (Coming Soon)

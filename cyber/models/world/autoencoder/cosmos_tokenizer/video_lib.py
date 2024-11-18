@@ -17,6 +17,7 @@
 
 """
 Modified the Causal Video Tokenizer for inference.
+Modified by CYBERORIGIN PTE. LTD. on 2024-11-18
 """
 
 import torch
