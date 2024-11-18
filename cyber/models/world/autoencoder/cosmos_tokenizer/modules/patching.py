@@ -26,7 +26,7 @@ For example, 4x downsampling can be done by 2x Haar and additional 2x Haar, and 
 """
 
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from einops import rearrange
 
 _WAVELETS = {
@@ -255,7 +255,7 @@ class UnPatcher3D(UnPatcher):
     def _idwt(self, x, wavelet="haar", mode="reflect", rescale=False):
         dtype = x.dtype
         h = self.wavelets
-        n = h.shape[0]
+        # n = h.shape[0] # unused
 
         g = x.shape[1] // 8  # split into 8 spatio-temporal filtered tesnors.
         hl = h.flip([0]).reshape(1, 1, -1).repeat([g, 1, 1])
