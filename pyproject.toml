@@ -143,7 +143,7 @@ exclude = ["docs", "test", "tests"]
 
 [tool.poetry]
 name = "cyber"
-version = "0.1.2"
+version = "0.1.3"
 description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
