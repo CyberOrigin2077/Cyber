@@ -73,12 +73,12 @@ def encode_videos(model: AutoEncoder, dataset: RawVideoDataset, dataset_dir: str
     # Step1 generate segment_ids.bin
     total_frames = 0
     seg_ids = []
-    logger.info(f"dataset : {dataset[0].shape[0]}") # (num_frames, H, W, C)
-    logger.info(f"dataset size: {dataset[0].shape}") # (num_frames, H, W, C)
+    logger.info(f"dataset : {dataset[0].shape[0]}")  # (num_frames, H, W, C)
+    logger.info(f"dataset size: {dataset[0].shape}")  # (num_frames, H, W, C)
     logger.info(f"len(dataset): {len(dataset)}")
 
     for i in tqdm(range(len(dataset)), desc="Counting videos' frames", unit="video"):
-        cur_frame_num = dataset[i].shape[0] 
+        cur_frame_num = dataset[i].shape[0]
         seg_ids.extend([i] * cur_frame_num)
         total_frames += cur_frame_num
 
