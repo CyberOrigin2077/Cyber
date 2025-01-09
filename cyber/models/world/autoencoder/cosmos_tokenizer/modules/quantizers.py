@@ -1,4 +1,5 @@
 # ruff: noqa: E402
+# ruff: noqa: RUF052
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #

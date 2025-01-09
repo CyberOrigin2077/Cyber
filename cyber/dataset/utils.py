@@ -38,10 +38,10 @@ def match_timestamps(times_a, times_b):
             j += 1
     # fill in the rest
     if i < len(times_a):
-        matches_a[i:] = [j - 1] * (len(times_b) - i)
+        matches_a[i:] = [j - 1] * (len(times_a) - i)
         diffs_a[i:] = [abs(times_a[i] - times_b[-1])] * (len(times_a) - i)
     if j < len(times_b):
-        matches_b[j:] = [i - 1] * (len(times_a) - j)
+        matches_b[j:] = [i - 1] * (len(times_b) - j)
         diffs_b[j:] = [abs(times_a[-1] - times_b[j])] * (len(times_b) - j)
     return matches_a, matches_b, diffs_a, diffs_b
 
